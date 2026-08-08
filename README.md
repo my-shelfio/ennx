@@ -28,7 +28,7 @@
 
 - バックエンド: Python 3.13 / FastAPI + Pydantic v2 / uvicorn。feature 単位 + Clean Architecture 構成（各 feature が domain / application / presentation / infrastructure の4層を持つ）+ API バージョニング（`/api/v1`）。層依存・feature 間独立を import-linter で CI 強制
 - フロントエンド: Vite + React + TypeScript + Tailwind CSS の SPA（Feature-Sliced Design 構成）。API 型は OpenAPI から openapi-typescript で自動生成
-- 配信構成: 単一サービス。Docker multi-stage で SPA をビルドし、FastAPI（uvicorn）が API と SPA を同一オリジンで配信する（本番・開発を別サービスとして分離、[#55](https://github.com/itokohei0/ennx/issues/55)）
+- 配信構成: 単一サービス。Docker multi-stage で SPA をビルドし、FastAPI（uvicorn）が API と SPA を同一オリジンで配信する（本番・開発を別サービスとして分離、[#55](https://github.com/my-shelfio/ennx/issues/55)）
 - 状態保持: マッチング API はステートレスで、入力・結果はクライアント側（localStorage）に保持する。投票（voting）機能のみ Neon PostgreSQL（SQLAlchemy Core + psycopg）に匿名・期限付き（最長 7 日）で保存する
 
 本番実行時依存は最小限に保ちます（低コスト運用・依存最小化の方針）。
@@ -119,7 +119,7 @@ docker run --rm -e PORT=9000 -p 9000:9000 ennx
 
 ## デプロイ手順（Render）
 
-本番と開発を別サービスとして [Render](https://render.com/) の Free プランで運用します（[#55](https://github.com/itokohei0/ennx/issues/55)）。リポジトリ直下の [`render.yaml`](render.yaml)（Render Blueprint 定義）に、両サービスの構成を Infrastructure as Code としてまとめています。
+本番と開発を別サービスとして [Render](https://render.com/) の Free プランで運用します（[#55](https://github.com/my-shelfio/ennx/issues/55)）。リポジトリ直下の [`render.yaml`](render.yaml)（Render Blueprint 定義）に、両サービスの構成を Infrastructure as Code としてまとめています。
 
 | 環境 | サービス名 | 追従ブランチ | デプロイトリガー                  | URL（例）                       |
 | ---- | ---------- | ------------ | --------------------------------- | ------------------------------- |

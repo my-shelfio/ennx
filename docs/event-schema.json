@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/itokohei0/ennx/master/docs/event-schema.json",
+  "$id": "https://raw.githubusercontent.com/my-shelfio/ennx/master/docs/event-schema.json",
   "title": "MatchingEvent",
   "description": "マッチングアルゴリズム（DA・FDA・CA）の実行過程を記録するイベント 1 件。docs/event-schema.md の機械可読な正本（API 契約）。POST /api/v1/matching/run のレスポンス events[] の各要素はこのスキーマに適合する。",
   "type": "object",

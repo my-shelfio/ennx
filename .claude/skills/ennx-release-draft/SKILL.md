@@ -26,7 +26,7 @@ description: ennx の develop→master へのリリース PR を作成する。�
 - **新バージョン**: `$ARGUMENTS`
 - **アプリリポジトリ**: リポジトリルート（このスキルを実行している作業ディレクトリ）
 - **バージョンファイル**: `pyproject.toml`（`[project]` の `version` フィールド）
-- **GitHub リポジトリ**: `itokohei0/ennx`
+- **GitHub リポジトリ**: `my-shelfio/ennx`
 - **ベースブランチ**: `master`（本番。Render サービス `ennx` が追従）
 - **ヘッドブランチ**: `develop`（開発。Render サービス `ennx-dev` が追従）
 
@@ -74,7 +74,7 @@ git log origin/master..origin/develop --merges --oneline
 
 ennx は Feature Branch Workflow（git-workflow.md）で運用しており、1 コミット単位ではなく
 **マージ済み PR 単位**でリリースノートの項目を数える。`git log --merges` で得たマージコミット
-（`Merge pull request #NN from itokohei0/<prefix>/<番号>`）と、squash マージされた単一コミット
+（`Merge pull request #NN from my-shelfio/<prefix>/<番号>`）と、squash マージされた単一コミット
 （メッセージ末尾に `(#NN)` が付く）の両方から、対象 PR 番号とヘッドブランチの prefix を集める。
 
 prefix（git-workflow.md のブランチ表）に従い、以下の3グループに分類する。
@@ -120,7 +120,7 @@ git push origin develop
 
 ```bash
 gh pr create \
-  --repo itokohei0/ennx \
+  --repo my-shelfio/ennx \
   --base master \
   --head develop \
   --title "release: v$ARGUMENTS" \
@@ -196,7 +196,7 @@ EOF
 
 ```bash
 gh release create "v$ARGUMENTS" \
-  --repo itokohei0/ennx \
+  --repo my-shelfio/ennx \
   --title "v$ARGUMENTS" \
   --target master \
   --notes "<確認済みのリリースノート内容>" \
