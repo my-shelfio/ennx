@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <title>ennx — 組織の問題を、経済学で可視化する</title>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5860D6"/>
+      <stop offset="100%" stop-color="#2E36A0"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- ロゴマーク（icon.svg のリング意匠を縮小配置） -->
+  <g transform="translate(90,255)">
+    <circle cx="88" cy="60" r="60" fill="none" stroke="#AEB7F8" stroke-width="22"/>
+    <circle cx="20" cy="60" r="60" fill="none" stroke="#FFFFFF" stroke-width="22"/>
+  </g>
+
+  <text x="260" y="300" font-family="Noto Sans CJK JP" font-size="88" font-weight="700" fill="#FFFFFF">ennx</text>
+  <text x="260" y="365" font-family="Noto Sans CJK JP" font-size="40" font-weight="700" fill="#FFFFFF">組織の問題を、経済学で可視化する</text>
+  <text x="260" y="415" font-family="Noto Sans CJK JP" font-size="26" fill="#DEE1FA">配属マッチングをDA / FDA / CAアルゴリズムで実行・可視化</text>
+
+  <!-- 訴求バッジ -->
+  <g font-family="Noto Sans CJK JP" font-size="22" font-weight="600" fill="#2E36A0">
+    <rect x="262" y="450" width="150" height="48" rx="24" fill="#FFFFFF"/>
+    <text x="292" y="481">登録不要</text>
+
+    <rect x="424" y="450" width="232" height="48" rx="24" fill="#FFFFFF"/>
+    <text x="450" y="481">インストール不要</text>
+
+    <rect x="668" y="450" width="110" height="48" rx="24" fill="#FFFFFF"/>
+    <text x="698" y="481">無料</text>
+  </g>
+</svg>

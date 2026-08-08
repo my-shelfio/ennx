@@ -1,0 +1,160 @@
+[project]
+name = "ennx"
+version = "0.1.0"
+description = "企業の問題を経済学を応用して可視化する Web アプリ（MVP）"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+# 本番実行時依存は最小限に保つ。
+dependencies = [
+    # JSON API フレームワーク。OpenAPI 自動生成・Pydantic 統合のため採用。
+    "fastapi>=0.115",
+    # ASGI サーバー（FastAPI の実行に必須、本番用）
+    "uvicorn>=0.30",
+    # リクエスト/レスポンスの宣言的バリデーション（fastapi の中核依存だが presentation 層で直接 import するため明示する）。
+    "pydantic>=2.9",
+    # 投票モジュールの保存基盤（SQLAlchemy Core + psycopg、ORM は使わない）。
+    "sqlalchemy>=2.0",
+    # PostgreSQL ドライバ（Neon 接続用）。
+    "psycopg[binary]>=3.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# backend/src/*: feature 単位 + Clean Architecture 構成。
+# api・features・shared を top-level パッケージとして editable インストールし、
+# テスト・uvicorn から解決できるようにする。api は API バージョニングの集約層。
+packages = [
+    "backend/src/api",
+    "backend/src/features",
+    "backend/src/shared",
+]
+
+[tool.hatch.build.targets.wheel.force-include]
+# アプリファクトリ（単一モジュールのため packages では指定できない）。
+"backend/src/main.py" = "main.py"
+
+# 開発用依存（lint・型・テスト）。本番イメージには含めない。
+[dependency-groups]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8",
+    "pre-commit>=3.7",
+    # プロパティテスト（#8）。slow マーカーを付与し、pre-commit では除外・CI では実行する。
+    "hypothesis>=6",
+    # 層依存契約の機械的検証。CI・pre-commit で lint-imports を実行する。
+    "import-linter>=2",
+    # FastAPI TestClient の実行時依存（API テスト用）。
+    "httpx>=0.27",
+]
+
+# --- Lint / Format（ruff） ---
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["backend/src"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: isort, UP: pyupgrade, B: bugbear
+select = ["E", "W", "F", "I", "UP", "B"]
+
+# --- 型チェック（mypy） ---
+[tool.mypy]
+python_version = "3.13"
+strict = true
+# `mypy .` 実行時に、型チェック対象外のディレクトリを走査しない
+# （仮想環境・ビルド成果物・参考資料のサンプルコード）。
+exclude = ['^\.venv/', '^build/', '^参考資料/']
+
+# --- 層依存契約（import-linter） ---
+# feature 単位 + Clean Architecture 構成。
+# ①feature 間は互いに独立（matching ⇔ voting の相互 import 禁止）
+# ②各 feature 内部は presentation / infrastructure → application → domain の一方向
+# ③shared は features に依存しない（features → shared の一方向のみ）
+# ④api は最外殻（バージョニング集約層）。features / shared → api は禁止する
+# ⑤api は各 feature の presentation 層のみに直接依存する（domain / application /
+#   infrastructure を直接 import しない。allow_indirect_imports で直接 import
+#   のみを対象とし、presentation 経由の間接到達は許容する）
+# 違反は CI / pre-commit の lint-imports で検出する。
+[tool.importlinter]
+root_packages = ["api", "features", "shared"]
+# 外部パッケージ（fastapi 等）を forbidden 契約の対象に含めるために必要。
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "features は互いに独立している（matching ⇔ voting）"
+type = "independence"
+modules = [
+    "features.matching",
+    "features.voting",
+]
+
+[[tool.importlinter.contracts]]
+name = "各 feature 内の層依存（presentation / infrastructure → application → domain）"
+type = "layers"
+layers = [
+    "presentation | infrastructure",
+    "application",
+    "domain",
+]
+containers = [
+    "features.matching",
+    "features.voting",
+]
+
+[[tool.importlinter.contracts]]
+name = "application 層は Web フレームワークに依存しない"
+type = "forbidden"
+source_modules = [
+    "features.matching.application",
+    "features.voting.application",
+    "shared.application",
+]
+forbidden_modules = [
+    "fastapi",
+    "pydantic",
+    "starlette",
+    "uvicorn",
+]
+
+[[tool.importlinter.contracts]]
+name = "shared は features に依存しない（features → shared の一方向のみ）"
+type = "forbidden"
+source_modules = ["shared"]
+forbidden_modules = ["features"]
+
+[[tool.importlinter.contracts]]
+name = "features / shared は api に依存しない（api が最外殻）"
+type = "forbidden"
+source_modules = ["features", "shared"]
+forbidden_modules = ["api"]
+
+[[tool.importlinter.contracts]]
+name = "api は各 feature の presentation 層のみに直接依存する"
+type = "forbidden"
+source_modules = ["api"]
+forbidden_modules = [
+    "features.matching.domain",
+    "features.matching.application",
+    "features.matching.infrastructure",
+    "features.voting.domain",
+    "features.voting.application",
+    "features.voting.infrastructure",
+]
+allow_indirect_imports = true
+
+# --- テスト（pytest） ---
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+# backend/src を import パスに前置し、編集中のモジュール（main.py 等）を
+# editable インストール済みのコピーより優先して解決する。
+pythonpath = ["backend/src"]
+addopts = "-q"
+# slow: 実行に時間がかかるテスト（Hypothesis のプロパティテスト等を想定）。
+# pre-commit では `-m "not slow"` で除外し、CI では全件実行する。
+markers = [
+    "slow: 実行に時間がかかるテスト（pre-commit では除外、CI では実行）",
+]

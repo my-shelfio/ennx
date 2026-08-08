@@ -1,0 +1,187 @@
+name: CI
+
+# push（develop / master）と、develop / master 宛の PR で品質チェックを実行する。
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+    branches: [develop, master]
+
+# 同一ブランチで新しい push があれば実行中のジョブをキャンセルする（無料枠の実行時間を節約）。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# GITHUB_TOKEN の権限を読み取りのみに制限する（最小権限）。
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: lint / type / test
+    runs-on: ubuntu-latest
+    # ハングした場合に無料枠を浪費しないよう上限を設ける。
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # uv のバージョンは Dockerfile（ghcr.io/astral-sh/uv）と揃えて固定する。
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.19"
+          enable-cache: true
+
+      # .python-version（3.13）に従って Python を用意する。
+      - name: Set up Python
+        run: uv python install
+
+      # uv.lock に固定されたバージョンで同期する。
+      # ロックが pyproject.toml と食い違う場合はここで失敗する（--frozen）。
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Ruff (lint)
+        run: uv run ruff check .
+
+      - name: Ruff (format)
+        run: uv run ruff format --check .
+
+      - name: Mypy (type check)
+        run: uv run mypy .
+
+      # 層依存契約の検証。契約は pyproject.toml の [tool.importlinter]。
+      - name: Import Linter (layer contracts)
+        run: uv run lint-imports
+
+      - name: Pytest
+        run: uv run pytest
+
+  # フロントエンドの品質チェック
+  # FSD の境界検査は eslint（eslint-plugin-boundaries）と steiger の両方で行う。
+  frontend:
+    name: frontend lint / type / test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Node.js のバージョンは LTS（22 系）に固定する。
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # package-lock.json に固定されたバージョンで再現インストールする。
+      - name: Install dependencies
+        run: npm ci
+
+      # OpenAPI 型生成。backend のスキーマ変更をここで取り込み、
+      # 以降の型チェックで検出できるようにする（型はコミットせず都度生成する）。
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.19"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+        working-directory: .
+
+      - name: Install backend dependencies (for OpenAPI export)
+        run: uv sync --frozen
+        working-directory: .
+
+      - name: Export OpenAPI schema
+        run: uv run python backend/scripts/export_openapi.py frontend/openapi.json
+        working-directory: .
+
+      - name: Generate API types
+        run: npm run gen:api-types
+
+      - name: ESLint (lint + FSD boundaries)
+        run: npm run lint
+
+      - name: TypeScript (type check)
+        run: npm run typecheck
+
+      - name: Vitest
+        run: npm run test
+
+      - name: Steiger (FSD structure)
+        run: npm run steiger
+
+      - name: Build
+        run: npm run build
+
+  # E2E スモークテスト（Playwright）。単一サービス構成で
+  # ビルド済み SPA（frontend/dist）と API を同一オリジンで起動し、本番相当の構成のまま
+  # 「サンプルデータで試す → 実行 → サマリーカード表示」の 1 本を検証する。
+  # PR 必須チェック化は任意（完了条件: CI で安定して通過すること）。
+  e2e:
+    name: E2E smoke (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.11.19"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install backend dependencies
+        run: uv sync --frozen
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # backend の OpenAPI スキーマから型・SPA のビルドに必要な型を生成する。
+      - name: Export OpenAPI schema
+        run: uv run python backend/scripts/export_openapi.py frontend/openapi.json
+
+      - name: Generate API types
+        run: npm run gen:api-types
+        working-directory: frontend
+
+      # webServer（playwright.config.ts）は uvicorn 起動時に既存の frontend/dist を
+      # ENNX_SPA_DIST として配信する前提のため、ここで事前にビルドしておく。
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Run Playwright smoke test
+        run: npm run test:e2e
+        working-directory: frontend
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

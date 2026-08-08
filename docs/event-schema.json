@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/itokohei0/ennx/master/docs/event-schema.json",
+  "title": "MatchingEvent",
+  "description": "マッチングアルゴリズム（DA・FDA・CA）の実行過程を記録するイベント 1 件。docs/event-schema.md の機械可読な正本（API 契約）。POST /api/v1/matching/run のレスポンス events[] の各要素はこのスキーマに適合する。",
+  "type": "object",
+  "properties": {
+    "round": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "ラウンド番号（1 始まり）。DA・FDA は提案〜受入の1巡、CA は調整の1反復。"
+    },
+    "event_type": {
+      "enum": [
+        "propose",
+        "tentative_accept",
+        "reject",
+        "waitlist",
+        "promote",
+        "cutoff_raise"
+      ],
+      "description": "イベント種別。"
+    },
+    "proposer": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "対象の提案者（0-indexed）。cutoff_raise のみ null。"
+    },
+    "receiver": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "対象の受入者（0-indexed）。"
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "補足説明（拒否理由など）。省略可。"
+    }
+  },
+  "required": ["round", "event_type", "proposer", "receiver"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "event_type": { "const": "cutoff_raise" } }
+      },
+      "then": {
+        "properties": { "proposer": { "type": "null" } }
+      },
+      "else": {
+        "properties": { "proposer": { "type": "integer" } }
+      }
+    }
+  ]
+}

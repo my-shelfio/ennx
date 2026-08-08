@@ -1,0 +1,42 @@
+参考資料/**
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+
+# uv / virtualenv
+.venv/
+venv/
+
+# 環境変数
+.env
+.env.*
+
+# ツールのキャッシュ
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+settings.json
+
+# frontend（Node.js）
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+.eslintcache
+
+# frontend: Playwright（E2E スモークテスト）の実行成果物
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
+
+# frontend: OpenAPI 型生成の生成物。backend の OpenAPI スキーマ変更を
+# 型エラーとして検出するため、都度再生成する運用としコミットしない。
+# `uv run python backend/scripts/export_openapi.py frontend/openapi.json`
+# → `cd frontend && npm run gen:api-types`
+frontend/openapi.json
+frontend/src/shared/api/schema.d.ts

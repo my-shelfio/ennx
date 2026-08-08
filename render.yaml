@@ -1,0 +1,35 @@
+# Render Blueprint 定義（Infrastructure as Code）。
+#
+# Render ダッシュボードで「New +」→「Blueprint」からこのリポジトリを接続すると、
+# 本ファイルの内容に従って Web Service が自動構成される。
+# 既存の個別サービスに手動で設定を反映する場合も、値の正本として本ファイルを参照する。
+#
+# 本番（ennx）と開発（ennx-dev）を別サービスとして分離する。
+# 本番は master への push（リリース PR のマージ）、開発は develop への push（通常の
+# 機能 PR のマージ）をそれぞれトリガーに自動デプロイする。
+#
+# 単一サービス構成 : Docker multi-stage で SPA をビルドし、
+# FastAPI が API と SPA を同一オリジンで配信する（Dockerfile 参照）。
+services:
+  # 本番環境。master ブランチへの push（リリース PR マージ）で自動デプロイする。
+  - type: web
+    name: ennx
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    branch: master
+    autoDeploy: true
+    healthCheckPath: /healthz
+
+  # 開発環境。develop ブランチへの push（通常の機能 PR マージ）で自動デプロイする。
+  # フォーム入力のみで実データを扱わないため、アクセス制限は設けない。
+  - type: web
+    name: ennx-dev
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    branch: develop
+    autoDeploy: true
+    healthCheckPath: /healthz

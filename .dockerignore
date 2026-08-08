@@ -1,0 +1,31 @@
+# バージョン管理・CI
+.git/
+.github/
+
+# 仮想環境・キャッシュ
+.venv/
+**/__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# 本番イメージに不要な開発・ドキュメント資産
+tests/
+backend/tests/
+docs/
+参考資料/
+.pre-commit-config.yaml
+
+# SPA はイメージ内でビルドするため、ローカルの成果物・依存・生成物は持ち込まない
+# （openapi.json / schema.d.ts はコミットせず都度再生成する運用。イメージ内で
+#   生成するため、ローカルの古い生成物を紛れ込ませない）
+frontend/node_modules/
+frontend/dist/
+frontend/openapi.json
+frontend/src/shared/api/schema.d.ts
+
+# 環境変数・OS
+.env
+.env.*
+.DS_Store

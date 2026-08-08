@@ -1,0 +1,48 @@
+# pre-commit による品質チェック（CI と同一のツール・設定を実行する）。
+# 有効化: `uv run pre-commit install`（作業開始時に一度だけ実行）
+#
+# 各フックは local + language: system とし、`uv run` 経由で
+# uv.lock に固定されたバージョンのツールを実行する。
+# これにより CI（.github/workflows/ci.yml）とローカルの挙動が完全に一致する。
+# フックのスキップ（git commit --no-verify）は禁止（docs 運用ルール参照）。
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff (lint)
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: ruff-format
+        name: ruff (format)
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: mypy
+        name: mypy (type check)
+        entry: uv run mypy .
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      # 層依存契約の検証。契約は pyproject.toml の [tool.importlinter]。
+      - id: import-linter
+        name: import-linter (layer contracts)
+        entry: uv run lint-imports
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      # テンプレート（.html）や設定ファイルのみの変更でもテストが落ちうるため、
+      # 変更ファイルの種別によらず常に実行する（always_run）。
+      # `slow` マーカーのテスト（将来のプロパティテスト等）はローカルでは除外し、CI で全件実行する。
+      - id: pytest
+        name: pytest
+        entry: uv run pytest -m "not slow"
+        language: system
+        always_run: true
+        pass_filenames: false

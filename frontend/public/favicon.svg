@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>ennx</title>
+  <style>
+    .ring-a { stroke: #3D46C9; }
+    .ring-b { stroke: #8891E8; }
+    @media (prefers-color-scheme: dark) {
+      .ring-a { stroke: #FFFFFF; }
+      .ring-b { stroke: #AEB7F8; }
+    }
+  </style>
+  <circle class="ring-b" cx="302" cy="256" r="108" fill="none" stroke-width="44"/>
+  <circle class="ring-a" cx="210" cy="256" r="108" fill="none" stroke-width="44"/>
+</svg>

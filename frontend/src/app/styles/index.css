@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+/*
+ * デザイントークン。
+ * Tailwind CSS v4 の CSS-first theme に、プロダクト風モダンな青系グラデーションと
+ * セマンティックカラー（ok/warning/danger）、コンポーネント用の角丸・シャドウスケールを定義する。
+ * 色は OKLCH で指定し、`color-scheme` と prefers-color-scheme への追従を用意することで
+ * 将来のダークモード対応（値の上書きのみ）を可能にする。
+ */
+@theme {
+  /* ブランドカラー（縁インディゴ。アプリアイコン #3D46C9 ≒ primary-600 に整合） */
+  --color-primary-50: oklch(0.97 0.02 272);
+  --color-primary-100: oklch(0.93 0.05 272);
+  --color-primary-200: oklch(0.86 0.09 272);
+  --color-primary-300: oklch(0.78 0.13 273);
+  --color-primary-400: oklch(0.68 0.17 274);
+  --color-primary-500: oklch(0.58 0.21 275);
+  --color-primary-600: oklch(0.49 0.22 274);
+  --color-primary-700: oklch(0.42 0.2 274);
+  --color-primary-800: oklch(0.35 0.16 274);
+  --color-primary-900: oklch(0.28 0.13 274);
+
+  /* セマンティックカラー: 成功 / 警告 / 危険 */
+  --color-ok-50: oklch(0.96 0.05 155);
+  --color-ok-100: oklch(0.91 0.08 155);
+  --color-ok-500: oklch(0.62 0.17 155);
+  --color-ok-600: oklch(0.53 0.16 155);
+  --color-ok-700: oklch(0.44 0.14 155);
+
+  --color-warning-50: oklch(0.97 0.06 95);
+  --color-warning-100: oklch(0.92 0.09 90);
+  --color-warning-500: oklch(0.75 0.16 85);
+  --color-warning-600: oklch(0.65 0.16 75);
+  --color-warning-700: oklch(0.52 0.14 70);
+
+  --color-danger-50: oklch(0.96 0.04 25);
+  --color-danger-100: oklch(0.9 0.08 25);
+  --color-danger-500: oklch(0.6 0.22 25);
+  --color-danger-600: oklch(0.52 0.22 25);
+  --color-danger-700: oklch(0.44 0.19 25);
+
+  /* コンポーネント用スペーシング（Tailwind 既定スケールを補完） */
+  --spacing-gutter: 1.25rem;
+  --spacing-section: 4rem;
+
+  /* 角丸スケール */
+  --radius-control: 0.5rem;
+  --radius-card: 1rem;
+  --radius-pill: 9999px;
+
+  /* シャドウスケール */
+  --shadow-control: 0 1px 2px oklch(0% 0 0 / 6%);
+  --shadow-card: 0 1px 2px oklch(0% 0 0 / 4%), 0 8px 24px oklch(0% 0 0 / 6%);
+  --shadow-popover:
+    0 4px 12px oklch(0% 0 0 / 10%), 0 16px 32px oklch(0% 0 0 / 12%);
+
+  /* モーション */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ブランドグラデーションのユーティリティ（bg-gradient-brand）。 */
+@utility bg-gradient-brand {
+  background-image: linear-gradient(
+    135deg,
+    var(--color-primary-500),
+    var(--color-primary-700)
+  );
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  /*
+   * 現時点ではダーク値は光量調整のみで未確定だが、prefers-color-scheme に
+   * 追従する土台を用意しておくことで、後続イシューでの値差し替えのみで
+   * ダークモード対応できるようにする。
+   */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+    }
+  }
+
+  body {
+    @apply bg-white text-slate-900 antialiased;
+  }
+}

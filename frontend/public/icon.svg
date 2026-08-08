@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>ennx</title>
+  <rect width="512" height="512" rx="115" fill="#3D46C9"/>
+  <path d="M256 176.4 A90 90 0 0 1 256 335.6 A90 90 0 0 1 256 176.4 Z" fill="#6B76E8"/>
+  <circle cx="298" cy="256" r="90" fill="none" stroke="#AEB7F8" stroke-width="34"/>
+  <circle cx="214" cy="256" r="90" fill="none" stroke="#FFFFFF" stroke-width="34"/>
+</svg>

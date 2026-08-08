@@ -1,0 +1,25 @@
+# 期限切れ投票データの日次削除（遅延削除 + 日次 cron の保証側）。
+# 本番 API の保護付きエンドポイントを叩く。Secrets:
+#   VOTING_CLEANUP_URL: 例 https://<本番ドメイン>/api/v1/voting/cleanup
+#   VOTING_CLEANUP_KEY: サーバー側 ENNX_CLEANUP_KEY と同じ値
+name: voting-cleanup
+
+on:
+  schedule:
+    # 毎日 18:00 UTC（JST 03:00）。
+    - cron: "0 18 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cleanup endpoint
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.VOTING_CLEANUP_URL }}" ]; then
+            echo "VOTING_CLEANUP_URL is not set; skipping." && exit 0
+          fi
+          curl --fail-with-body -sS -X POST \
+            -H "X-Cleanup-Key: ${{ secrets.VOTING_CLEANUP_KEY }}" \
+            "${{ secrets.VOTING_CLEANUP_URL }}"
