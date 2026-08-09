@@ -92,8 +92,8 @@ fix: 定員合計が社員数を下回る場合の警告表示を修正
 ```mermaid
 sequenceDiagram
     actor P1 as 開発者
-    participant C as Claude CLI<br>（スキル）
-    participant R as リモートリポジトリ<br>（GitHub）
+    participant C as Claude CLI<br>(スキル)
+    participant R as リモートリポジトリ<br>(GitHub)
     participant A as Render
 
     loop 要求ごとに繰り返し
@@ -104,10 +104,10 @@ sequenceDiagram
         end
         P1->>C: ③実装
         C->>R: Draft PR 作成（コミット・プッシュ）
-        C->>R: セルフレビュー<br>（指摘をPRレビューコメントとして投稿）
+        C->>R: セルフレビュー<br>(指摘をPRレビューコメントとして投稿)
         C->>R: 指摘対応をプッシュ後<br>Ready for review へ変更
-        P1->>R: developブランチへマージ<br>（要求の状態を更新）
-        R->>A: 開発環境へ自動デプロイ<br>（developへのpushで即時反映）
+        P1->>R: developブランチへマージ<br>(要求の状態を更新)
+        R->>A: 開発環境へ自動デプロイ<br>(developへのpushで即時反映)
     end
     P1->>C: ④ドキュメント整合の確認
     P1->>R: ⑤リリース準備<br>リリースPR作成・masterへマージ
