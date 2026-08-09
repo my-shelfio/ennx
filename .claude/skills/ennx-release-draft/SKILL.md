@@ -104,7 +104,7 @@ git push origin develop
 ```
 
 - pre-commit（ruff / mypy / pytest）が自動実行される。**`--no-verify` は絶対に使わない**（git-workflow.md）。
-- pre-commit が失敗した場合は原因を修正してから再コミットする。バージョン変更自体とは無関係な既存の
+- pre-commit が失敗した場合は原因を修正してから再コミットする。バージョン変更自体とは無関係な
   lint/型/テスト指摘が出た場合もスキップせず、ユーザーに報告して対応方針を確認する。
 
 ---
@@ -148,7 +148,7 @@ gh pr create \
 
 ## その他
 
-- マージ後、master への push により本番環境（ennx）へ自動デプロイされる（render.yaml, #55）
+- マージ後、master への push により本番環境（ennx）へ自動デプロイされる（render.yaml, #20）
 EOF
 )"
 ```

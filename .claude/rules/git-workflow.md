@@ -9,7 +9,7 @@ paths:
 ## MUST（要約） <!-- omit in toc -->
 
 - 作業ブランチは必ず最新の `develop` から切る。`develop` / `master` へ直接コミット・プッシュしない。
-- ブランチ名は `<prefix>/<イシュー番号>` **のみ**（説明的な文字列を付加しない）。prefix はイシューのラベルから判定する（下表）。例: イシュー #142（`frontend`/`backend` ラベル、新機能）→ `feat/142`。
+- ブランチ名は `<prefix>/<イシュー番号>` **のみ**（説明的な文字列を付加しない）。prefix はイシューのラベルから判定する（下表）。例: イシュー #30（`frontend`/`backend` ラベル、新機能）→ `feat/30`。
 - タスクはイシュー単位で対応する。イシューがなければ先にイシュー登録する。
 - 実装・品質ゲート通過後はコミット・プッシュして **Draft PR を先に作成する**。レビューは Draft PR 作成後に行い、指摘は PR のレビューコメントとして残す（下記「PR・レビュールール」）。
 - 新規ラベル・マイルストーンの作成、ドキュメントの編集を許可なく行わない。
@@ -36,7 +36,7 @@ paths:
 - 作業ブランチは**必ず最新の `develop` から**切る。
 - ブランチ名・コミットメッセージのプレフィックスを揃える。プレフィックスはイシューのラベルから判定する。
 - **ブランチ名は `<prefix>/<イシュー番号>` の形式のみとし、機能名などの説明的な文字列を付加しない**
-  （例: イシュー #142 なら `feat/142` であり、`feature/voting-nickname-required` のような
+  （例: イシュー #30 なら `feat/30` であり、`feature/voting-nickname-required` のような
   命名はしない）。`frontend`/`backend` のような技術領域ラベルのみでラベル欄に変更種別
   （`feature`/`bug`/`docs` 等）が付いていない場合も、イシュー本文の内容（新機能か・
   バグ修正か等）から下表の prefix を判断し、番号のみをブランチ名に用いる。
@@ -87,13 +87,13 @@ fix: 定員合計が社員数を下回る場合の警告表示を修正
 
 ## ワークフロー
 
-要求の発生からデプロイまでを、①〜⑥の一連の作業フローとして扱う。Render は本番（master 追従）・開発（develop 追従）の 2 サービスに分離しており（#55、詳細は README の「デプロイ手順」参照）、develop へのマージは即座に開発環境へ、master へのマージは本番環境へ、それぞれ自動デプロイされる。
+要求の発生からデプロイまでを、①〜⑥の一連の作業フローとして扱う。Render は本番（master 追従）・開発（develop 追従）の 2 サービスに分離しており（#20、詳細は README の「デプロイ手順」参照）、develop へのマージは即座に開発環境へ、master へのマージは本番環境へ、それぞれ自動デプロイされる。
 
 ```mermaid
 sequenceDiagram
     actor P1 as 開発者
-    participant C as Claude CLI<br>(スキル)
-    participant R as リモートリポジトリ<br>(GitHub)
+    participant C as Claude CLI<br>（スキル）
+    participant R as リモートリポジトリ<br>（GitHub）
     participant A as Render
 
     loop 要求ごとに繰り返し
@@ -104,10 +104,10 @@ sequenceDiagram
         end
         P1->>C: ③実装
         C->>R: Draft PR 作成（コミット・プッシュ）
-        C->>R: セルフレビュー<br>(指摘をPRレビューコメントとして投稿)
+        C->>R: セルフレビュー<br>（指摘をPRレビューコメントとして投稿）
         C->>R: 指摘対応をプッシュ後<br>Ready for review へ変更
-        P1->>R: developブランチへマージ<br>(要求の状態を更新)
-        R->>A: 開発環境へ自動デプロイ<br>(developへのpushで即時反映)
+        P1->>R: developブランチへマージ<br>（要求の状態を更新）
+        R->>A: 開発環境へ自動デプロイ<br>（developへのpushで即時反映）
     end
     P1->>C: ④ドキュメント整合の確認
     P1->>R: ⑤リリース準備<br>リリースPR作成・masterへマージ
@@ -117,7 +117,7 @@ sequenceDiagram
 ## 禁止事項
 
 - `develop` / `master` への直接コミット・プッシュ禁止。
-- **`--no-verify` によるフック（pre-commit）のスキップは絶対禁止**。pre-commit は唯一の自動品質チェックであり、スキップは品質保証を無効化する。
+- **`--no-verify` によるフック（pre-commit）のスキップは絶対禁止**。pre-commit は唇一の自動品質チェックであり、スキップは品質保証を無効化する。
 - 許可なく Issue ラベル・マイルストーンを新設しない。
 - 許可なくドキュメントを編集しない。
 - シークレット・認証情報・`.env` をコミットしない。
