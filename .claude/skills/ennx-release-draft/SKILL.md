@@ -104,7 +104,7 @@ git push origin develop
 ```
 
 - pre-commit（ruff / mypy / pytest）が自動実行される。**`--no-verify` は絶対に使わない**（git-workflow.md）。
-- pre-commit が失敗した場合は原因を修正してから再コミットする。バージョン変更自体とは無関係な
+- pre-commit が失敗した場合は原因を修正してから再コミットする。バージョン変更自体とは無関係な既存の
   lint/型/テスト指摘が出た場合もスキップせず、ユーザーに報告して対応方針を確認する。
 
 ---
