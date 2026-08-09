@@ -28,7 +28,7 @@
 
 - バックエンド: Python 3.13 / FastAPI + Pydantic v2 / uvicorn。feature 単位 + Clean Architecture 構成（各 feature が domain / application / presentation / infrastructure の4層を持つ）+ API バージョニング（`/api/v1`）。層依存・feature 間独立を import-linter で CI 強制
 - フロントエンド: Vite + React + TypeScript + Tailwind CSS の SPA（Feature-Sliced Design 構成）。API 型は OpenAPI から openapi-typescript で自動生成
-- 配信構成: 単一サービス。Docker multi-stage で SPA をビルドし、FastAPI（uvicorn）が API と SPA を同一オリジンで配信する（本番・開発を別サービスとして分離、[#55](https://github.com/my-shelfio/ennx/issues/55)）
+- 配信構成: 単一サービス。Docker multi-stage で SPA をビルドし、FastAPI（uvicorn）が API と SPA を同一オリジンで配信する（本番・開発を別サービスとして分離、[#20](https://github.com/my-shelfio/ennx/issues/20)）
 - 状態保持: マッチング API はステートレスで、入力・結果はクライアント側（localStorage）に保持する。投票（voting）機能のみ Neon PostgreSQL（SQLAlchemy Core + psycopg）に匿名・期限付き（最長 7 日）で保存する
 
 本番実行時依存は最小限に保ちます（低コスト運用・依存最小化の方針）。
@@ -119,7 +119,7 @@ docker run --rm -e PORT=9000 -p 9000:9000 ennx
 
 ## デプロイ手順（Render）
 
-本番と開発を別サービスとして [Render](https://render.com/) の Free プランで運用します（[#55](https://github.com/my-shelfio/ennx/issues/55)）。リポジトリ直下の [`render.yaml`](render.yaml)（Render Blueprint 定義）に、両サービスの構成を Infrastructure as Code としてまとめています。
+本番と開発を別サービスとして [Render](https://render.com/) の Free プランで運用します（[#20](https://github.com/my-shelfio/ennx/issues/20)）。リポジトリ直下の [`render.yaml`](render.yaml)（Render Blueprint 定義）に、両サービスの構成を Infrastructure as Code としてまとめています。
 
 | 環境 | サービス名 | 追従ブランチ | デプロイトリガー                  | URL（例）                       |
 | ---- | ---------- | ------------ | --------------------------------- | ------------------------------- |
@@ -147,7 +147,7 @@ docker run --rm -e PORT=9000 -p 9000:9000 ennx
 
 - `/healthz` が `200 ok` を返すこと
 - 「ホーム →（サンプルデータで試す、または）設定ウィザード → 選好順位入力 → 結果表示（「実行過程を見る」でのステップ再生を含む）」の一連の画面遷移が実際のブラウザで完了すること
-- レスポンスヘッダに `Content-Security-Policy` / `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy` / `Strict-Transport-Security` が付与されていること（`backend/src/shared/presentation/security.py`、#81 のセキュリティ最低限対応。API はステートレスのため Cookie は発行しない）
+- レスポンスヘッダに `Content-Security-Policy` / `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy` / `Strict-Transport-Security` が付与されていること（`backend/src/shared/presentation/security.py`、#15 のセキュリティ最低限対応。API はステートレスのため Cookie は発行しない）
 
 Free プランはアクセスが一定時間ないとスリープし、次回アクセス時にコールドスタートが発生します（低コスト運用上のトレードオフとして許容しています）。
 
@@ -174,7 +174,7 @@ backend/
   scripts/              # OpenAPI スキーマ出力等
 frontend/
   src/                  # React SPA（FSD: app / pages / widgets / features / entities / shared）
-  e2e/                  # E2E スモークテスト（Playwright、#82）
+  e2e/                  # E2E スモークテスト（Playwright、#43）
 docs/
   system-spec.md        # システム仕様書
   event-schema.md       # イベントログ（ステップログ）の共通スキーマ
