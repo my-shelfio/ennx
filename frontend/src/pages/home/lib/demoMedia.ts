@@ -4,7 +4,7 @@ export interface DemoMedia {
 }
 
 // デモ素材（プレースホルダ）。
-// 実際の操作画面を収録した GIF/動画への差し替えは follow-up タスク（#128）。
+// 実際の操作画面を収録した GIF/動画への差し替えは follow-up タスク。
 const ANIMATED_SRC = "/demo-preview-animated.svg";
 const STATIC_SRC = "/demo-preview-static.svg";
 const ALT_TEXT =
@@ -12,7 +12,7 @@ const ALT_TEXT =
 
 /**
  * prefers-reduced-motion の設定に応じて表示するデモ素材を切り替える。
- * true（視差効果を減らす設定が有効）の場合は静止画にフォールバックし、自動再生しない（#128）。
+ * true（視差効果を減らす設定が有効）の場合は静止画にフォールバックし、自動再生しない。
  */
 export function getDemoMedia(prefersReducedMotion: boolean): DemoMedia {
   return {

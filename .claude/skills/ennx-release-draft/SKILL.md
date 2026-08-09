@@ -148,7 +148,7 @@ gh pr create \
 
 ## その他
 
-- マージ後、master への push により本番環境（ennx）へ自動デプロイされる（render.yaml, #55）
+- マージ後、master への push により本番環境（ennx）へ自動デプロイされる（render.yaml, #20）
 EOF
 )"
 ```

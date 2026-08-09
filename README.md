@@ -147,7 +147,7 @@ docker run --rm -e PORT=9000 -p 9000:9000 ennx
 
 - `/healthz` が `200 ok` を返すこと
 - 「ホーム →（サンプルデータで試す、または）設定ウィザード → 選好順位入力 → 結果表示（「実行過程を見る」でのステップ再生を含む）」の一連の画面遷移が実際のブラウザで完了すること
-- レスポンスヘッダに `Content-Security-Policy` / `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy` / `Strict-Transport-Security` が付与されていること（`backend/src/shared/presentation/security.py`、#15 のセキュリティ最低限対応。API はステートレスのため Cookie は発行しない）
+- レスポンスヘッダに `Content-Security-Policy` / `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy` / `Strict-Transport-Security` が付与されていること（`backend/src/shared/presentation/security.py`、#35 のセキュリティ最低限対応。API はステートレスのため Cookie は発行しない）
 
 Free プランはアクセスが一定時間ないとスリープし、次回アクセス時にコールドスタートが発生します（低コスト運用上のトレードオフとして許容しています）。
 
