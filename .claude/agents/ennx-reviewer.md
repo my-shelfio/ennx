@@ -22,7 +22,7 @@ tools: Read, Grep, Glob, Bash
      存在するか
    - **algorithm-port**: 純粋関数性（print 混入なし）、共通データモデルの再利用、
      理論的前提の入力検証
-   - **設計整合**: docs（event-schema.md、ADR、ユースケース記述）と実装の乖離
+   - **設計整合**: docs（`docs/event-schema.md`・`docs/system-spec.md`）と実装の乖離
 4. 判定結果を返す
 
 ## 出力形式
