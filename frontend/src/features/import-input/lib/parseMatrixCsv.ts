@@ -45,7 +45,7 @@ function findDuplicates(values: readonly string[]): string[] {
  * 行・列の見出しの空欄・重複・上限超過は取込をブロックする。
  * セルの順位エラー（重複・範囲外・空欄行）は entities/matching の validateRow
  * （widgets/preference-matrix の行列エディタと同一のロジック）で検出し、
- * `blocking: false` として扱う（#123: エラーがあっても取り込み、行列UI上で修正できるようにする）。
+ * `blocking: false` として扱う（エラーがあっても取り込み、行列UI上で修正できるようにする）。
  * 不正な値（整数でない・1未満）のセルは null（未入力）として扱い、行列自体は生成する。
  */
 export function parseMatrixCsv(
@@ -159,4 +159,3 @@ export function parseMatrixCsv(
     issues,
   };
 }
-
