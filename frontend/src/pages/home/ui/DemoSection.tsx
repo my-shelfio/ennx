@@ -9,9 +9,9 @@ import { usePrefersReducedMotion } from "../model/usePrefersReducedMotion";
 const HIGHLIGHTS = ["登録不要", "インストール不要", "無料"] as const;
 
 /**
- * 「30秒でわかる」デモセクション（#128）。
+ * 「30秒でわかる」デモセクション。
  * サンプルデータでの「設定 → 選好入力 → 実行 → ステップ再生」の流れを軽量な画像で
- * 提示し、直下に「サンプルデータで試す」CTA を再掲する。
+ * 提示し、直下に「サンプルデータで試す」 CTA を再掲する。
  * 実際の操作画面を収録した GIF/動画（`public/demo-preview-animated.svg` /
  * `public/demo-preview-static.svg`）は現時点ではイラスト調のプレースホルダであり、
  * 実素材への差し替えは follow-up タスク。
