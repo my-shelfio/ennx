@@ -1,0 +1,40 @@
+name: ドキュメント
+description: ドキュメントの新規作成・更新・修正
+title: "【docs】"
+labels:
+  - docs
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・目的
+      description: 何を・なぜ更新するかを記載する（実装との乖離、記載漏れ、構成変更など）。
+    validations:
+      required: true
+  - type: textarea
+    id: target-docs
+    attributes:
+      label: 対象ドキュメント
+      description: 更新対象のドキュメントを列挙する。
+      value: |
+        - `docs/xxx.md` — 更新内容
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 作業内容（タスク分解）
+      value: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true

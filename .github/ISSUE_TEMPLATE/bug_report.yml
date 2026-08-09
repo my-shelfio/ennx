@@ -1,0 +1,80 @@
+name: 不具合対応
+description: バグや予期しない動作を報告する
+title: "【fix】"
+labels:
+  - bug
+body:
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 発生事象
+      description: 発生している問題を簡潔に記載する。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待する動作
+      description: 本来どう動くべきかを記載する。
+    validations:
+      required: true
+  - type: textarea
+    id: root-cause
+    attributes:
+      label: 根本原因
+      description: >-
+        ファイルI/Oエラー・DBエラー・エラーハンドリング漏れ・リグレッションなど、原因がわかれば記載する。
+        不明な場合は「調査中」と記載。
+    validations:
+      required: false
+  - type: textarea
+    id: fix-plan
+    attributes:
+      label: 対応内容
+      description: 修正方針と作業内容を記載する。
+      value: |
+        **対象ファイル:**
+        - `path/to/file.py`
+
+        **変更内容:**
+        -
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 実行環境
+      value: |
+        | 項目       | 内容                             |
+        | ---------- | -------------------------------- |
+        | 環境       | ローカル / 本番（Render）        |
+        | ブラウザ   | Chrome XXX / Safari XX など      |
+        | OS         | macOS XX / Windows XX など       |
+        | バージョン | コミットSHA または リリースタグ  |
+    validations:
+      required: false
+  - type: textarea
+    id: reference
+    attributes:
+      label: 参考
+    validations:
+      required: false
