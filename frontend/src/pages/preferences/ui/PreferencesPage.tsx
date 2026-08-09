@@ -16,7 +16,7 @@ import { PreferenceMatrix } from "../../../widgets/preference-matrix";
  * `useMatchingResultStore` に保持して /result へ遷移する。失敗時はエラートーストを表示し
  * 入力は保持したまま選好入力画面に留まる（再試行はボタン再押下）。
  *
- * 選好行列のみの CSV 再取込（#123）にも対応する。既存の部署・社員名簿は変更せず、
+ * 選好行列のみの CSV 再取込にも対応する。既存の部署・社員名簿は変更せず、
  * employee_prefs.csv・department_prefs.csv の2ファイルのみを受け付ける
  * （エクスポート→外部で編集→再インポートの往復運用向け）。
  */

@@ -12,7 +12,7 @@ export interface DrawerProps {
 }
 
 /**
- * 汎用ドロワー（#114）。@radix-ui/react-dialog にフォーカストラップ・Esc クローズ・
+ * 汎用ドロワー。@radix-ui/react-dialog にフォーカストラップ・Esc クローズ・
  * オーバーレイクリックでのクローズを委譲する（Toast.tsx と同様の Radix + motion 合成パターン）。
  * `prefers-reduced-motion` 時はトランジションを実質ゼロにする。
  * グローバルナビ（widgets/global-nav）のドロワー UI として使う想定。

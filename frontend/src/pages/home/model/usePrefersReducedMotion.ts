@@ -12,7 +12,7 @@ function getInitialPreference(): boolean {
 /**
  * OS/ブラウザの「視差効果を減らす」設定（prefers-reduced-motion）を購読する。
  * デモセクションの GIF/動画は、この値が true の間は自動再生せず静止画に
- * フォールバックする（#128）。
+ * フォールバックする。
  */
 export function usePrefersReducedMotion(): boolean {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(getInitialPreference);

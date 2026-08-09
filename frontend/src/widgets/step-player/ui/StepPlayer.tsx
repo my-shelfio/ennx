@@ -44,7 +44,7 @@ const KEYBOARD_HELP_TEXT =
  * 例外フロー1aの再実行導線を表示する。
  *
  * キーボード操作（←/→/Space/Home/End）・イベント種別フィルタ・社員追跡・
- * 「配属確定ステップへ」「最終結果へ」のジャンプに対応する（#126）。
+ * 「配属確定ステップへ」「最終結果へ」のジャンプに対応する。
  */
 export function StepPlayer({ result, onClose, onReRun, isReRunning = false }: StepPlayerProps) {
   const snapshots = useMemo(
