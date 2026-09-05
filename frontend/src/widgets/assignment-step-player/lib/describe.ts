@@ -1,4 +1,5 @@
 import type { TimelineStep } from "../../../entities/assignment";
+import { UNASSIGNED } from "../../../entities/assignment";
 
 /** ステップの見出し（時刻区間）を組み立てる。 */
 export function stepHeading(step: TimelineStep): string {
@@ -12,7 +13,7 @@ export function consumedLabel(
   departmentNames: readonly string[],
 ): string {
   const department = step.consumption[employee];
-  if (department === undefined || department < 0) {
+  if (department === undefined || department === UNASSIGNED) {
     return "未配属（∅）";
   }
   return departmentNames[department] ?? `部署${department + 1}`;

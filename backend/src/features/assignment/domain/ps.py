@@ -159,9 +159,9 @@ def _next_event_time(
     """次に供給が尽きるか上限制約が飽和するまでの経過時間を返す（上限は limit）。"""
     delta = limit
     for obj in set(eating):
-        amount = remaining[obj] if obj < len(remaining) else None
+        amount = remaining[obj]
         if amount is None:
-            continue
+            continue  # ∅ は無制限なので時間を区切らない
         delta = min(delta, amount / eating.count(obj))
     for constraint in data.constraints:
         rate = sum(1 for agent, obj in enumerate(eating) if (agent, obj) in constraint.cells)

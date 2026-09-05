@@ -1,4 +1,4 @@
-import { fractionToNumber } from "../../../entities/assignment";
+import { fractionToNumber, UNASSIGNED } from "../../../entities/assignment";
 import type { AssignmentResult, LotteryTerm } from "../../../entities/assignment";
 
 /** くじの 1 項を「誰がどこへ」の読み下し文にする。 */
@@ -7,7 +7,9 @@ export function describeTerm(term: LotteryTerm, result: AssignmentResult): strin
     .map((department, employee) => {
       const name = result.employee_names[employee];
       const target =
-        department === -1 ? "未配属" : (result.department_names[department] ?? `部署${department + 1}`);
+        department === UNASSIGNED
+          ? "未配属"
+          : (result.department_names[department] ?? `部署${department + 1}`);
       return `${name}→${target}`;
     })
     .join("、");

@@ -1,4 +1,5 @@
 import type { AssignmentResult } from "../../../entities/assignment";
+import { UNASSIGNED } from "../../../entities/assignment";
 import { Badge } from "../../../shared/ui";
 
 interface DrawnAssignmentProps {
@@ -17,15 +18,19 @@ export function DrawnAssignment({ result }: DrawnAssignmentProps) {
     <div className="flex flex-col gap-3">
       <ul className="grid gap-2 sm:grid-cols-2">
         {result.employee_names.map((name, employee) => {
-          const department = result.drawn_assignment[employee] ?? -1;
+          const department = result.drawn_assignment[employee] ?? UNASSIGNED;
           return (
             <li
               key={name}
               className="flex items-center justify-between rounded-control border border-slate-200 px-3 py-2 text-sm"
             >
               <span className="text-slate-700">{name}</span>
-              <span className={department < 0 ? "text-slate-400" : "font-medium text-slate-900"}>
-                {department < 0
+              <span
+                className={
+                  department === UNASSIGNED ? "text-slate-400" : "font-medium text-slate-900"
+                }
+              >
+                {department === UNASSIGNED
                   ? "未配属"
                   : (result.department_names[department] ?? `部署${department + 1}`)}
               </span>

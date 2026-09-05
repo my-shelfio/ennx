@@ -58,6 +58,7 @@ export function NgPairField({ employeeLabels, pairs, onChange }: NgPairFieldProp
           type="button"
           variant="outline"
           size="sm"
+          disabled={employeeLabels.length < 2}
           onClick={() => onChange([...pairs.map((pair) => [...pair]), [0, 1]])}
         >
           NG ペアを追加

@@ -1,4 +1,5 @@
 import type { AssignmentEvent } from "../model/types";
+import { UNASSIGNED } from "../model/types";
 
 /**
  * イーティング過程のイベントログを、ステップ再生で 1 手ずつ追える形に整形する。
@@ -16,7 +17,7 @@ export interface TimelineStep {
   end: string;
   /** 区間で消費した量（分数文字列）。 */
   amount: string;
-  /** 社員ごとの消費先。`consumption[i]` は部署 index（-1 = 未配属）。 */
+  /** 社員ごとの消費先。`consumption[i]` は部署 index（UNASSIGNED = 未配属）。 */
   consumption: number[];
   /** 区間の終わりに起きたこと（供給の枯渇・制約の飽和）の説明。 */
   notes: string[];
@@ -42,13 +43,13 @@ export function buildTimeline(
         start: event.start,
         end: event.end,
         amount: "0",
-        consumption: Array.from({ length: employeeCount }, () => -1),
+        consumption: Array.from({ length: employeeCount }, () => UNASSIGNED),
         notes: [],
       } satisfies TimelineStep);
 
     if (event.event_type === "consume") {
       if (event.employee !== null && event.employee !== undefined) {
-        current.consumption[event.employee] = event.department ?? -1;
+        current.consumption[event.employee] = event.department ?? UNASSIGNED;
       }
       current.amount = event.amount ?? current.amount;
     } else if (event.reason) {
