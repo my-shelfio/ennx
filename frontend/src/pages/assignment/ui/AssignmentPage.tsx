@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { useAssignmentInputStore, useAssignmentResultStore } from "../../../entities/assignment";
+import { ExportAssignmentMenu } from "../../../features/export-assignment-result";
 import { useAssignmentSample, useRunAssignment } from "../../../features/run-assignment";
 import { useToast } from "../../../shared/ui";
 import { AssignmentForm } from "../../../widgets/assignment-form";
@@ -74,6 +75,9 @@ export function AssignmentPage() {
 
       {result && (
         <>
+          <div className="flex justify-end">
+            <ExportAssignmentMenu input={input} result={result} />
+          </div>
           <AssignmentResultPanel result={result} />
           <AssignmentStepPlayer result={result} />
         </>

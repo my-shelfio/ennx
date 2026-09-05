@@ -6,8 +6,8 @@ DTO と相互変換する。OpenAPI スキーマの源泉となり、フロン�
 
 分数は情報を落とさないよう "1/2" 形式の既約文字列で返す。丸めは表示側の責務。
 
-入力上限: 社員 ≤ 24・部署 ≤ 8（domain 層の上限と揃える）。マッチングより小さいのは、
-くじを引く処理の計算量が分数の成分数に対して急速に増えるため。
+入力上限: 社員 ≤ 50・部署 ≤ 15（domain 層の上限と揃える）。マッチングより小さいのは、
+くじを引く処理の計算量が分数の成分数のおよそ 2 乗になるため。
 """
 
 from __future__ import annotations
@@ -26,8 +26,8 @@ from features.assignment.application.dto.results import (
 )
 from shared.presentation.schemas import FieldErrorSchema, ReportItemSchema
 
-MAX_DEPARTMENTS = 8
-MAX_EMPLOYEES = 24
+MAX_DEPARTMENTS = 15
+MAX_EMPLOYEES = 50
 
 
 class AssignmentConstraintEntrySchema(BaseModel):

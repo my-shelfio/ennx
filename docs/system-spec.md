@@ -109,7 +109,8 @@ ennx/
 │       ├── widgets/              #   setup-wizard / preference-matrix / result-summary / assignment-map / step-player /
 │       │                         #   assignment-form / assignment-result / assignment-step-player /
 │       │                         #   global-nav / voting-create-form / voting-ballot-form / voting-results-panel
-│       ├── features/             #   run-matching / run-assignment / validate-input / load-sample / import-input / export-result /
+│       ├── features/             #   run-matching / run-assignment / validate-input / load-sample / import-input /
+│       │                         #   export-result / export-assignment-result /
 │       │                         #   share-link / clear-data / analytics / ca-constraint-meta /
 │       │                         #   voting-create / voting-participate / voting-manage / export-voting-results
 │       ├── entities/             #   matching（OpenAPI 生成型・zustand ストア・イベントログパーサ）/ assignment / voting
@@ -192,7 +193,7 @@ sequenceDiagram
 ### サンプル読込・エクスポートフロー <!-- omit in toc -->
 
 - **サンプル読込**: `GET /api/v1/sample` から研修医マッチング風のデモ入力を取得してストアに投入し、入力済み状態の選好入力画面を表示する（クリックのみ・1 分以内で結果到達）。
-- **エクスポート**: 保持済みの結果データからクライアント内でファイルを生成する（サーバー往復なし）。JSON = 設定・選好・結果・性質レポートの全量 / CSV = 社員別配属表。投票の集計結果も同様にクライアント内でエクスポートできる（`features/export-voting-results`）。
+- **エクスポート**: 保持済みの結果データからクライアント内でファイルを生成する（サーバー往復なし）。JSON = 設定・選好・結果・性質レポートの全量 / CSV = 社員別配属表。割り当て（`features/export-assignment-result`）・投票の集計結果（`features/export-voting-results`）も同様にクライアント内でエクスポートできる。
 
 ### 割り当て実行フロー <!-- omit in toc -->
 
@@ -220,6 +221,7 @@ sequenceDiagram
 - **くじ**: 制約を満たす確定的な配属と、それを引く確率の組。**常に返すのは「1 回引いた結果」**（`drawn_assignment`）で、抽選に使ったシードを添えて再現可能にする。くじの全項（`lottery`）は項数が上限に収まった場合だけ添え、`lottery_complete` で区別する（全列挙は項数が最悪 2^(制約集合数) になるため）。
 - **抽選とスタンス**: 確率的な配分では抽選そのものがメカニズムの一部であるため、ennx は抽選を実行して結果とシードを示す。どの配属を採用するかの決定は利用者に委ねる。
 - **保証しない性質の明示**: PS は耐戦略性を満たさないため、性質レポートに注意項目として常に表示する。
+- **エクスポート**: 配属表（抽選結果とシード）・期待割当（厳密な分数と小数近似・入力の控え）・JSON（全量）の 3 形式をクライアント内で生成する（サーバー往復なし）。分数は既約分数の文字列のまま出し、集計に使えるよう小数の近似列を併記する。
 
 ### 投票・合意形成フロー <!-- omit in toc -->
 
@@ -273,7 +275,7 @@ sequenceDiagram
 
 - 入力上限: **部署 ≤ 50・社員 ≤ 100**（`presentation/schemas` に定義）。超過は 422、過大ペイロードは 413 で拒否する。
 - アルゴリズムの理論的前提（FDA の「地域内目標定員合計 ≤ 地域上限」、CA の遺伝性制約など）は domain 層の入力検証（`__post_init__` の ValueError）で保証する。
-- 割り当て（PS）の入力上限は **社員 ≤ 24・部署 ≤ 8** と、マッチングより小さく設定する。くじを引く処理が 1 手ごとに「分数セルを変数とする連立一次方程式」を厳密に解くため、計算時間が分数セル数（最悪 社員数 × 部署数）に対して急速に増えることによる（全員が同じ希望を出す最悪ケースで 24 × 8 が約 1 秒、30 × 10 で約 5 秒）。引き上げには方向探索を交代閉路の探索へ置き換える最適化が要る。
+- 割り当て（PS）の入力上限は **社員 ≤ 50・部署 ≤ 15** と、マッチングより小さく設定する。くじを引く処理の計算時間が分数セル数（最悪 社員数 × 部署数）のおよそ 2 乗になるため（全員が同じ希望を出す最悪ケースの実測で 50 × 15 が約 0.6 秒、60 × 20 で約 1.7 秒）。希望順位がばらけると分数セルは大きく減り、同じ処理でも 1 桁速くなる。
 - 割り当て（PS）では、追加の上限制約が **bihierarchy** を成すこと（＝期待割当を確定的な配属のくじに分解できること）を実行前に検証する。交差する制約（例: NG ペアの鎖状指定）は 422 で拒否し、交差している制約名を理由として返す。
 
 ### エラー形式（RFC 9457） <!-- omit in toc -->

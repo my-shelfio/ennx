@@ -16,6 +16,7 @@ from features.assignment.application.usecases import (
     RunAssignment,
     ValidateAssignmentInput,
 )
+from features.assignment.domain import MAX_AGENTS
 
 
 def _request(**overrides: Any) -> AssignmentRequest:
@@ -197,8 +198,13 @@ def test_large_input_returns_a_draw_without_the_full_lottery() -> None:
 
 
 def test_input_over_the_size_limit_is_rejected() -> None:
-    """入力規模の上限を超えると検証エラーになる。"""
-    outcome = ValidateAssignmentInput().execute(_request(agent_prefs=[[1, 2] for _ in range(25)]))
+    """入力規模の上限を超えると検証エラーになる。
+
+    上限値そのものは性能実測に応じて変わるため、定数から 1 人だけ超えた入力を作る。
+    """
+    over_limit = [[1, 2] for _ in range(MAX_AGENTS + 1)]
+
+    outcome = ValidateAssignmentInput().execute(_request(agent_prefs=over_limit))
 
     assert not outcome.valid
     assert any("上限" in error.message for error in outcome.errors)
