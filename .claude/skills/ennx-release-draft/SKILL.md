@@ -79,13 +79,29 @@ ennx は Feature Branch Workflow（git-workflow.md）で運用しており、1 �
 （`Merge pull request #NN from my-shelfio/<prefix>/<番号>`）と、squash マージされた単一コミット
 （メッセージ末尾に `(#NN)` が付く）の両方から、対象 PR 番号とヘッドブランチの prefix を集める。
 
-prefix（git-workflow.md のブランチ表）に従い、以下の3グループに分類する。
+分類の正本は `.github/release.yml`（GitHub の自動生成リリースノート設定）である。
+同ファイルの `categories` はイシュー／PR のラベルでカテゴリを決めるため、手書きのリリースノートも
+**ラベルを基準に**同じカテゴリへ振り分ける。ラベルが取得できない場合のみ、ブランチ prefix
+（git-workflow.md のブランチ表）から下表のラベル欄を逆引きして代替する。
 
-- **機能改修リスト**: `feat/` ブランチ由来の PR
-- **不具合修正リスト**: `fix/` ブランチ由来の PR
-- **改善リスト**: `chore/` / `docs/` ブランチ由来の PR（リファクタ・CI・ドキュメント整備等）
+| カテゴリ           | ラベル                                       | 対応する prefix        |
+| ------------------ | -------------------------------------------- | ---------------------- |
+| 👍 機能改修        | `feature` / `ui-ux`                          | `feat/`                |
+| 🐛 不具合修正      | `bug`                                        | `fix/` / `hotfix/`     |
+| 🔄 改善            | `setup` / `ci` / `infra` / `test` / `nice-to-have` | `chore/`         |
+| 📖 ドキュメント    | `docs`                                       | `docs/`                |
+| その他の変更       | 上記以外のラベル                             | 上記以外               |
+
+`.github/release.yml` の `exclude.labels`（`duplicate` / `invalid` / `wontfix`）が付いた PR は
+リリースノートから除外する。
 
 各項目は「PR タイトル（コミットメッセージ末尾の `（#イシュー番号）` 表記は重複するため除去してよい） + PR 番号」の形で保持する。
+
+ラベルは以下で取得できる。
+
+```bash
+gh pr view <PR番号> --repo my-shelfio/ennx --json number,title,labels
+```
 
 ---
 
@@ -129,7 +145,7 @@ gh pr create \
   --body "$(cat <<'EOF'
 ## 変更内容
 
-<ステップ3で分類した PR 一覧を箇条書きで記載（機能改修/不具合修正/改善を含む）>
+<ステップ3で分類した PR 一覧を箇条書きで記載（機能改修/不具合修正/改善/ドキュメント/その他の変更を含む）>
 
 ## 変更理由
 
@@ -167,17 +183,25 @@ EOF
 - **リリース日**： YYYY年MM月DD日
 - [本番環境](https://ennx.onrender.com)
 
-## 👍機能改修
+## 👍 機能改修
 
 ### <機能改修リストの各項目> #<PR番号>
 
-## 🐛不具合修正
+## 🐛 不具合修正
 
 ### <不具合修正リストの各項目> #<PR番号>
 
-## 🔄改善
+## 🔄 改善
 
 ### <改善リストの各項目> #<PR番号>
+
+## 📖 ドキュメント
+
+### <ドキュメントリストの各項目> #<PR番号>
+
+## その他の変更
+
+### <その他リストの各項目> #<PR番号>
 
 ## ⚠️注意
 
@@ -188,6 +212,8 @@ EOF
 - FastAPI + React SPA（uvicorn 単一サービス、Render Free プラン）
 ```
 
+- セクションの見出し・並び順は `.github/release.yml` の `categories` と一致させる（`## ⚠️注意` と
+  `## ✍備考` はリリース運用上の追記枠であり、`.github/release.yml` には対応するカテゴリを持たない）
 - 該当する PR がないセクションは省略する
 - `## ✍備考` には運用上の注記があれば追記し、`- FastAPI + React SPA（uvicorn 単一サービス、Render Free プラン）` は末尾に残す
 - 実装なしでクローズされたイシュー（他イシューに置き換えられた等）があれば `## ⚠️注意` に記載する
@@ -205,7 +231,8 @@ gh release create "v$ARGUMENTS" \
   --draft
 ```
 
-- タグは `v$ARGUMENTS`（例: `v0.2.0`）
+- タグは `v$ARGUMENTS`（例: `v0.2.0`）。タグは Release 作成時に `master` を指して作られるものだけを
+  運用し、`git tag` による手動作成・付け替えは行わない
 - `--draft` フラグで下書き状態にする（公開はしない）
 - 作成後、Release の URL を取得して記録する
 
