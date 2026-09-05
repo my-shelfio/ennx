@@ -98,12 +98,14 @@ PS ＋ 一般化 BvN 分解）の 2 つ。**両者はデータモデルを共有
 ## 開発フロー
 
 - ブランチ・イシュー・PR の運用は `.claude/rules/git-workflow.md` に従う（作業ブランチは最新 develop から、ブランチ名 `<prefix>/<イシュー番号>`）。
+- 要求の整理・イシュー起票はスキル ennx-issue-draft（種別判定〜テンプレート準拠の本文ドラフト生成〜ユーザー承認後に起票）
 - 開発着手はスキル ennx-develop-work（イシュー番号からブランチ作成〜実装〜Draft PR〜Ready for review までを一貫実行）
 - バックエンド（Clean Architecture）・フロントエンド（FSD）の開発ルールは `.claude/rules/architecture.md`
 - アルゴリズムの移植・追加は `.claude/rules/algorithm-port.md`（スキル: ennx-algorithm-port）
 - バグ対応は `.claude/rules/testing.md` とスキル ennx-bugfix
 - リポジトリに存在しない外部資料への言及禁止は `.claude/rules/documentation.md`
 - 実装・品質ゲート通過後はコミット・プッシュして Draft PR を作成し、その後にスキル ennx-review（ennx-reviewer エージェント）でセルフレビューする。指摘は PR のレビューコメントとして残し、対応後に Ready for review へ変更する（詳細は git-workflow.md「PR・レビュールール」）
+- ドキュメントと実装の整合確認はスキル ennx-doc-sync（乖離の検出と更新案の提示まで。反映はユーザー承認後）
 - リリース（develop→master の PR・GitHub Release ドラフト作成）はスキル ennx-release-draft
 
 ## コーディング規約
