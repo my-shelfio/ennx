@@ -1,20 +1,23 @@
 ---
-description: マッチングアルゴリズムの移植・新規実装のルール。参照実装ファーストと理論照合を必須とする。
+description: マッチング・割り当てアルゴリズムの移植・新規実装のルール。参照実装ファーストと理論照合を必須とする。
 paths:
   - "backend/src/features/matching/domain/**"
+  - "backend/src/features/assignment/domain/**"
   - "backend/tests/features/matching/domain/**"
+  - "backend/tests/features/assignment/domain/**"
 ---
 
 # アルゴリズム移植・実装ルール
 
 ## MUST
 
-1. **移植前に移植元を実行して期待値を確定する**。移植元の実行例（*_exec.py 相当）をverbose=False で実行し、全例の proposer_match / receiver_match 等を記録してから実装を始める。期待値はフィクスチャテストとして backend/tests/features/matching/domain/ に固定する。**記憶ベースで実装せず移植元コードと実行例の提供をユーザーに依頼する**
+1. **移植前に移植元を実行して期待値を確定する**。移植元の実行例（*_exec.py 相当）をverbose=False で実行し、全例の結果（マッチングなら proposer_match / receiver_match、割り当てなら期待割当行列と分解結果）を記録してから実装を始める。期待値はフィクスチャテストとして `backend/tests/features/<feature>/domain/` に固定する。**記憶ベースで実装せず移植元コードと実行例の提供をユーザーに依頼する**
 2. **理論定義を正とする**。実装判断に迷ったら下記の[アルゴリズム理論の定義](./algorithm-port.md#アルゴリズム理論)に立ち返り、記載がなければ理論情報の提供をユーザーに依頼する。移植元コードと理論定義が食い違う可能性がある場合は移植元のバグを疑い、ennx-theory-checker エージェントで引用付きの照合を行ってから判断する
 3. **純粋関数として実装する**。print / verbose を持ち込まない。実行過程はdocs/event-schema.md の共通イベントスキーマで記録する
-4. **共通データモデルを再利用する**。入力は `models.BaseMatchingInput` 派生、結果は`MatchingResult` 派生。インデックス規約・検証方針は `CLAUDE.md`「アルゴリズム層の設計原則」に従う
+4. **共通データモデルを再利用する**。同じ feature 内の入出力モデル（matching は `models.BaseMatchingInput` / `MatchingResult` 派生、assignment は `models.AssignmentInput` / `AssignmentResult` 派生）を使う。**前提の異なるアルゴリズムを既存モデルに無理に載せない**。載らない場合は feature を分ける（判断基準は `CLAUDE.md`「アルゴリズム層の設計原則」）
 5. **理論的前提を入力検証で保証する**。アルゴリズムの正しさが暗黙の前提条件に依存する場合、その条件を `__post_init__` の ValueError として明示する
-6. 移植済みの3つのアルゴリズムの期待値（移植元実行例と同一結果）は `backend/tests/features/matching/domain/test_da.py` / `test_fda.py` / `test_ca.py` に固定済み。**期待値の変更には理論照合による根拠を必須とする**
+6. 移植済みのアルゴリズムの期待値（移植元実行例と同一結果）は `backend/tests/features/matching/domain/test_da.py` / `test_fda.py` / `test_ca.py` と `backend/tests/features/assignment/domain/test_assignment_ps.py` / `test_assignment_lottery.py` に固定済み。**期待値の変更には理論照合による根拠を必須とする**
+7. **制約付きの性質は、制約付きの定義で判定する**。無制約版の定義をそのまま使うと、正しい結果に対して違反を報告する。例: 上限制約があるとき、制約のせいで得られない割当への羨望は「正当な羨望」ではなく、入れ替えで制約構造が変わる 2 人は「同値」ではない
 
 ## 根拠
 
@@ -31,8 +34,10 @@ paths:
 - **提案者（proposer）/ 受入者（receiver）**: 多対1マッチングの応募側／受け入れ側（社員／部署、研修医／病院、学生／大学）
 - **選好リスト**: 外部入力は 1-indexed の相手番号を好きな順に並べたリスト。**リストに含まれない相手は「受け入れ不可能」** を意味する（部分リスト可）
 - **マッチング**: `proposer_match[i]` = マッチした受入者の 0-index（-1 = 未マッチ）、`receiver_match[j]` = マッチした提案者の 0-index リスト
+- **割り当て問題（片側選好）**: 社員（agent）だけが希望順位を申告し、部署・案件（object）は候補者を順位づけしない配分問題。結果は確定的なマッチングではなく**期待割当**（各社員が各対象を受け取る期待個数を並べた分数行列。∅ 列を含めて行和は 1）になる
+- **期待割当と純割当**: 期待割当は分数のままでは配れない。実際に配るには、制約を満たす**純割当**（整数行列）と、それを引く確率の組（**くじ**）に分解する必要がある
 
-### 性質の定義（検証は `backend/src/features/matching/domain/checks.py`）
+### マッチングの性質の定義（検証は `backend/src/features/matching/domain/checks.py`）
 
 | 性質                       | 定義                                                                                                                                                                                           |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -75,9 +80,39 @@ paths:
 - **前提条件（遺伝性）**: 各制約は**遺伝性（hereditary）を満たす上限制約**であること（実行可能な集合の任意の部分集合も実行可能。とくに空集合は常に実行可能）。「最低◯人」等の**下限制約は対象外**（収束しない・誤った結果になりうる）。空集合の実行可能性は `CAInput.__post_init__` で検証する
 - **保証**: 提案者最適**公平**マッチング（Kamada and Kojima, 2024）。提案者側耐戦略性を満たす。定員制約のみの場合、結果は DA と一致する（プロパティテストで検証済み）
 
+### 割り当ての性質の定義（検証は `backend/src/features/assignment/domain/checks.py`）
+
+| 性質                       | 定義                                                                                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 確率支配（sd）             | 社員の希望順位のもとで、上位集合すべての累積確率が他方以上（厳密支配はどこかで真に上回る）                                                                       |
+| 水平性                     | **同値**な社員の期待割当が一致する。同値 = 希望順位が同じ、かつ 2 人を入れ替えても制約構造が変わらない                                                          |
+| 無羨望性（正当な羨望なし） | i が j を正当に羨む ⇔ j の割当が i の割当を厳密に確率支配し、かつ 2 人の行の入替が上限制約を破らない。制約で得られない割当への羨望は数えない                    |
+| 順序効率性                 | 非浪費性（空きがあり上限制約にも余地があるのに下位を正の確率で得ていない）+ 関係 τ_P の非巡回性。上限制約があるときは後者の網羅的確認に線形計画が要るため非浪費性まで判定する |
+| 耐戦略性                   | どの社員も虚偽の希望順位申告で厳密に良い結果を得られない                                                                                                        |
+| 実装可能性                 | 期待割当を、制約を満たす純割当のくじに分解できること                                                                                                            |
+
+### PS（Probabilistic Serial / 同時確率消費方式）
+
+- **対象**: 片側選好の多対 1 割り当て（席替え・持ち回り・機会配分・案件アサイン）。上限制約（NG ペア分離・グループ別クォータ等）に対応する拡張版を実装している
+- **手順**: 全社員が時刻 0 から速度 1 で「いま**獲得可能な**最も好きな対象」を同時に食べ、時刻 1 で食べ終える。獲得可能とは「供給に空きがあり、かつ (社員, 対象) に関わるすべての上限制約にまだ余地がある」こと。時刻 1 までに食べた量が期待割当になる
+- **前提条件**: 上限制約のみを対象とする。**下限制約（最低◯人）は対象外**（獲得可能性の定義が上限に対して与えられており、下限を課すとイーティングの途中で実行可能性が壊れうる）
+- **保証**: 順序効率性・無羨望性・水平性（Bogomolnaia and Moulin, 2001）。**耐戦略性は満たさない**（虚偽申告で得できる社員が存在しうる）。上限制約付きでは順序効率性が保証の中心で、無羨望性は一般には成り立たない
+
+### 一般化 BvN 分解（期待割当 → 純割当のくじ）
+
+- **対象**: PS が返した期待割当を、制約を満たす純割当のくじに分解する
+- **制約構造**: 制約集合 S ⊆ 社員 × 列 ごとに整数の下限・上限を与えたもの。1 対 1 の「行和 = 1・列和 = 1」はその特殊ケース
+- **前提条件（bihierarchy）**: 制約構造を 2 つの**階層**（任意の 2 元が入れ子か互いに素）の和に分割できること。判定は交差グラフ（頂点 = 制約集合、辺 = 交差する組）の 2 彩色に帰着する。単集合はどの集合とも交差しないため判定対象から外してよい
+- **保証**: bihierarchy なら、クォータを満たす任意の期待割当は必ず実装可能（定理 1。Hoffman–Kruskal の完全単模性 + Edmonds）。行制約と列制約をすべて含む正準二部制約構造では bihierarchy は**必要十分**（定理 2）。制約集合が**奇サイクル**を成すと実装不可能（補題 1）。3 部以上・ルームメイト問題は必ず奇サイクルを含むため、この方式は二部構造までが限界（定理 12・13）
+- **計算量の注意**: くじの**全列挙**は両枝を展開するため項数が最悪 2^(制約集合数) になり、実用規模では現実的でない。**実際に配るには原論文の多項式時間アルゴリズム（各分岐で確率 γ に従い片枝だけを辿り純割当を 1 つ抽選する）を使う**。全列挙は小さい入力で「くじの全体像」を見せる用途に限る
+- **抽選の再現性**: 乱数生成器は引数で受け取り、シードを結果に含めて再現可能にする（純粋関数性の維持と、決定の説明可能性の両方のため）
+
 ### 参考文献
 
 - Gale, D. and L. S. Shapley (1962) "College Admissions and the Stability of Marriage," *American Mathematical Monthly*, 69(1), pp.9-15.
 - Roth, A. E. (1986) "On the Allocation of Residents to Rural Hospitals," *Econometrica*, 54(2), pp.425-427.（僻地病院定理）
 - Kamada, Y. and F. Kojima (2015) "Efficient Matching under Distributional Constraints: Theory and Applications," *American Economic Review*, 105(1), pp.67-99.（FDA）
 - Kamada, Y. and F. Kojima (2024) "Fair Matching under Constraints: Theory and Applications," *Review of Economic Studies*, 91(2), pp.1162-1199.（CA）
+- Bogomolnaia, A. and H. Moulin (2001) "A New Solution to the Random Assignment Problem," *Journal of Economic Theory*, 100(2), pp.295-328.（PS）
+- Budish, E., Y.-K. Che, F. Kojima, and P. Milgrom (2013) "Designing Random Allocation Mechanisms: Theory and Applications," *American Economic Review*, 103(2), pp.585-623.（一般化 BvN 定理・bihierarchy）
+- Birkhoff, G. (1946) "Three Observations on Linear Algebra," *Universidad Nacional de Tucuman Revista*, A5, pp.147-151.（BvN 定理）

@@ -1,3 +1,4 @@
+import { useAssignmentInputStore, useAssignmentResultStore } from "../../../entities/assignment";
 import { useMatchingInputStore, useMatchingResultStore } from "../../../entities/matching";
 import { Button, useToast } from "../../../shared/ui";
 
@@ -6,10 +7,16 @@ import { Button, useToast } from "../../../shared/ui";
  * 共有端末で利用した後、入力データを利用者自身が消去できるようにするため、
  * 全ページ共通レイアウト（app/layout/AppLayout）のヘッダーに配置する。
  * 入力（localStorage 永続化）・実行結果（非永続）の両方をクリアする。
+ *
+ * **クライアントに入力を残すモジュールを増やしたら、必ずここにも追加する**。
+ * 1 つでも漏れると「クリアしたのに残っている」状態になり、共有端末での利用後に
+ * 消去できるという要件が崩れる。現在の対象はマッチングと割り当ての 2 つ。
  */
 export function ClearDataButton() {
-  const clearInput = useMatchingInputStore((state) => state.clear);
-  const clearResult = useMatchingResultStore((state) => state.clear);
+  const clearMatchingInput = useMatchingInputStore((state) => state.clear);
+  const clearMatchingResult = useMatchingResultStore((state) => state.clear);
+  const clearAssignmentInput = useAssignmentInputStore((state) => state.clear);
+  const clearAssignmentResult = useAssignmentResultStore((state) => state.clear);
   const { toast } = useToast();
 
   function handleClick() {
@@ -19,8 +26,10 @@ export function ClearDataButton() {
     if (!confirmed) {
       return;
     }
-    clearInput();
-    clearResult();
+    clearMatchingInput();
+    clearMatchingResult();
+    clearAssignmentInput();
+    clearAssignmentResult();
     toast({ title: "入力データを消去しました", variant: "neutral" });
   }
 

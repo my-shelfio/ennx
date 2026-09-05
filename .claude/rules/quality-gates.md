@@ -16,7 +16,7 @@ paths:
 3. **CI と同一条件を保つ**。品質ゲートの内容を変える場合は .github/workflows/ci.yml と
    .pre-commit-config.yaml と CLAUDE.md を同時に更新する
 4. **`--no-verify` は絶対禁止**（git-workflow.md の再掲。pre-commit は唯一の自動品質チェック）
-5. **プロパティテスト（slow マーカー）に影響しうる変更**（backend/src/features/matching/domain/ 配下の
+5. **プロパティテスト（slow マーカー）に影響しうる変更**（backend/src/features/matching/domain/・backend/src/features/assignment/domain/ 配下の
    変更）では、ローカルでも slow 込みの全件テストを実行してからコミットする
 
 ## 根拠
