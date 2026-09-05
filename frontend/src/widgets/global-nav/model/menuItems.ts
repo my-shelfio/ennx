@@ -18,8 +18,10 @@ export interface MenuItem {
 
 /**
  * グローバルナビのメニュー定義。
+ * 表記はホームのカード表記（モジュール名）に統一する。リンク先は各モジュールの
+ * 実行画面とし、再訪ユーザーが導入ページを経由せずに直行できるようにする
+ * （導入ページへはホームのカードから遷移する）。
  * 将来追加予定のモジュール（インセンティブ設計）は「準備中」表示でクリック不可にする。
- * 「情報共有」（投票・合意形成モジュール）は実装済みのため通常リンクとする。
  * 次のモジュールを追加する際は、このマッピング表を拡張判断の基準にする。
  */
 export const MENU_ITEMS: readonly MenuItem[] = [
@@ -38,12 +40,12 @@ export const MENU_ITEMS: readonly MenuItem[] = [
   {
     id: "assignment",
     label: "割り当て",
-    path: ROUTES.assignment.root,
+    path: ROUTES.assignment.run,
     matchPrefix: "/assignment",
   },
   {
-    id: "info-sharing",
-    label: "情報共有",
+    id: "voting",
+    label: "投票・合意形成",
     path: ROUTES.voting.create,
     matchPrefix: "/voting",
   },

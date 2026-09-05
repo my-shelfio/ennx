@@ -6,7 +6,7 @@ import { useMatchingInputStore } from "../../../entities/matching";
 import { useLoadSample } from "../../../features/load-sample";
 import { ImportPanel } from "../../../features/import-input";
 import { decodeShareLinkData } from "../../../features/share-link";
-import { ROUTES } from "../../../shared/config";
+import { ROUTES, SAMPLE_PARAM, SAMPLE_VALUE } from "../../../shared/config";
 import { useToast } from "../../../shared/ui";
 import { SetupWizard } from "../../../widgets/setup-wizard";
 
@@ -23,7 +23,7 @@ type ShareLinkState =
  * 設定ウィザードページ。サンプルデータで試す場合・共有リンク（`?d=`）経由の場合にも対応する。
  * ウィザード本体は widgets/setup-wizard（規模・制約種別・詳細の入力、ステップ間検証）で実装する。
  *
- * "?sample=1"（ホーム画面の「サンプルデータで試す」からの遷移）の場合、マウント時に
+ * "?sample=1"（配属マッチングの導入ページの「サンプルデータで試す」からの遷移）の場合、マウント時に
  * `GET /api/v1/sample` を取得してストアへ投入し、入力済み状態の選好入力画面（/preferences）へ
  * 遷移する。取得失敗時はエラートーストを表示し、通常のウィザード（空の状態）を表示して
  * 手入力を継続できるようにする（入力内容が失われない方針を踏襲する）。
@@ -41,7 +41,7 @@ type ShareLinkState =
  */
 export function SetupWizardPage() {
   const [searchParams] = useSearchParams();
-  const isSample = searchParams.get("sample") === "1";
+  const isSample = searchParams.get(SAMPLE_PARAM) === SAMPLE_VALUE;
   const sharedData = searchParams.get("d");
   const navigate = useNavigate();
   const input = useMatchingInputStore((state) => state.input);
