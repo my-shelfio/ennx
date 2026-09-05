@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import random
 from fractions import Fraction
 
 import pytest
@@ -15,6 +16,7 @@ from features.assignment.domain import (
     ConstraintSet,
     ConstraintStructure,
     DecompositionError,
+    LotteryTooLargeError,
     UpperConstraint,
     build_constraint_structure,
     column_set,
@@ -23,8 +25,10 @@ from features.assignment.domain import (
     find_odd_cycle,
     is_hierarchy,
     probabilistic_serial,
+    quota_violations,
     reconstruct,
     row_set,
+    sample_pure_assignment,
     verify,
 )
 
@@ -170,3 +174,78 @@ def test_integer_matrix_is_a_single_term() -> None:
 
     assert problems == []
     assert terms == [("1", [[1, 0, 0], [0, 1, 0]])]
+
+
+def test_sampling_reproduces_the_full_lottery_distribution() -> None:
+    """抽選の分布が全分解の重みと一致する（同じ入力を多数回引いて確認する）。"""
+    data = AssignmentInput(
+        agent_prefs=[[1, 2], [1, 2], [2, 1], [2, 1]],
+        capacities=[2, 1],
+        constraints=[
+            UpperConstraint(cells=frozenset({(0, 0), (1, 0), (2, 0)}), upper=1, label="上限 1")
+        ],
+    )
+    matrix = probabilistic_serial(data).expected_assignment
+    structure = build_constraint_structure(data)
+    expected = {
+        tuple(tuple(row) for row in term.assignment): term.weight
+        for term in decompose(matrix, structure)
+    }
+
+    rng = random.Random(20260904)
+    trials = 2000
+    counts: dict[tuple[tuple[int, ...], ...], int] = {}
+    for _ in range(trials):
+        drawn = sample_pure_assignment(matrix, structure, rng)
+        key = tuple(tuple(row) for row in drawn)
+        counts[key] = counts.get(key, 0) + 1
+
+    assert set(counts) == set(expected)
+    for key, weight in expected.items():
+        assert abs(counts[key] / trials - float(weight)) < 0.05
+
+
+def test_sampling_is_reproducible_with_the_same_seed() -> None:
+    """同じシードなら同じ純割当が得られる。"""
+    data = AssignmentInput(agent_prefs=[[1, 2], [1, 2], [2, 1], [2, 1]], capacities=[1, 1])
+    matrix = probabilistic_serial(data).expected_assignment
+    structure = build_constraint_structure(data)
+
+    first = sample_pure_assignment(matrix, structure, random.Random(7))
+    second = sample_pure_assignment(matrix, structure, random.Random(7))
+
+    assert first == second
+
+
+def test_sampled_assignment_satisfies_all_constraints() -> None:
+    """抽選結果は受け入れ人数と追加制約を満たす。"""
+    data = AssignmentInput(
+        agent_prefs=[[1, 2], [1, 2], [1, 2], [2, 1]],
+        capacities=[2, 2],
+        constraints=[UpperConstraint(cells=frozenset({(0, 0), (1, 0)}), upper=1, label="NG ペア")],
+    )
+    matrix = probabilistic_serial(data).expected_assignment
+    structure = build_constraint_structure(data)
+
+    drawn = sample_pure_assignment(matrix, structure, random.Random(1))
+
+    pure = [[Fraction(value) for value in row] for row in drawn]
+    assert quota_violations(pure, structure) == []
+    assert drawn[0][0] + drawn[1][0] <= 1
+
+
+def test_full_enumeration_is_skipped_when_too_many_fractional_cells() -> None:
+    """分数の成分が多い入力では全列挙を試みずに打ち切る（抽選は成立する）。"""
+    size = 12
+    data = AssignmentInput(
+        agent_prefs=[list(range(1, 5)) for _ in range(size)],
+        capacities=[3, 3, 3, 3],
+    )
+    matrix = probabilistic_serial(data).expected_assignment
+    structure = build_constraint_structure(data)
+
+    with pytest.raises(LotteryTooLargeError):
+        decompose(matrix, structure)
+
+    drawn = sample_pure_assignment(matrix, structure, random.Random(3))
+    assert quota_violations([[Fraction(v) for v in row] for row in drawn], structure) == []

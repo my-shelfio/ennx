@@ -10,6 +10,7 @@ import {
 import { expectedHeadcounts, expectedUnassigned } from "../lib/summary";
 
 import { AssignmentReport } from "./AssignmentReport";
+import { DrawnAssignment } from "./DrawnAssignment";
 import { ExpectedAssignmentTable } from "./ExpectedAssignmentTable";
 import { LotteryList } from "./LotteryList";
 
@@ -50,16 +51,30 @@ export function AssignmentResultPanel({ result }: AssignmentResultPanelProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>確定的な配属のくじ（{result.lottery.length} 通り）</CardTitle>
+          <CardTitle>抽選結果（配属案）</CardTitle>
           <CardDescription>
-            期待割当は分数のままでは配れません。制約を満たす確定的な配属と、それを引く確率に
-            分解したものがこの一覧です。抽選は利用者が行ってください。
+            期待割当は分数のままでは配れません。制約を満たす確定的な配属のくじを 1 回引いた
+            結果がこれです。受け入れ人数と追加制約は必ず満たします。
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <LotteryList result={result} />
+          <DrawnAssignment result={result} />
         </CardContent>
       </Card>
+
+      {result.lottery_complete && (
+        <Card>
+          <CardHeader>
+            <CardTitle>くじの全体像（{result.lottery.length} 通り）</CardTitle>
+            <CardDescription>
+              抽選の母集団です。この一覧のどれかが、それぞれの確率で引かれます。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LotteryList result={result} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

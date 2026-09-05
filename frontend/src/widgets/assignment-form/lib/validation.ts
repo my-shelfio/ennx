@@ -1,8 +1,12 @@
 import type { AssignmentInput } from "../../../entities/assignment";
 
-/** 入力上限（バックエンドのスキーマ上限と揃える）。 */
-export const EMPLOYEE_COUNT_MAX = 100;
-export const DEPARTMENT_COUNT_MAX = 50;
+/**
+ * 入力上限（バックエンドのスキーマ上限と揃える）。
+ * 配属マッチングより小さいのは、くじを引く計算量が分数の成分数に対して
+ * 急速に増えるため（サーバー側も同じ値で拒否する）。
+ */
+export const EMPLOYEE_COUNT_MAX = 24;
+export const DEPARTMENT_COUNT_MAX = 8;
 
 /**
  * 送信前のクライアント側検証。
@@ -12,6 +16,12 @@ export function validateAssignmentInput(input: AssignmentInput): string[] {
   const errors: string[] = [];
   const departmentCount = input.capacities.length;
 
+  if (input.agent_prefs.length > EMPLOYEE_COUNT_MAX) {
+    errors.push(`社員数は ${EMPLOYEE_COUNT_MAX} 人までです。`);
+  }
+  if (departmentCount > DEPARTMENT_COUNT_MAX) {
+    errors.push(`部署数は ${DEPARTMENT_COUNT_MAX} 件までです。`);
+  }
   if (departmentCount === 0) {
     errors.push("部署を 1 件以上設定してください。");
   }

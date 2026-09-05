@@ -33,7 +33,7 @@ class RunAssignment:
             InvalidAssignmentInputError: 入力が不正、または分解できない場合。
         """
         data = build_domain_input(request)
-        result = run_mechanism(data)
+        result = run_mechanism(data, request.seed)
         emp_names, dep_names = resolve_names(request)
 
         return AssignmentOutcome(
@@ -46,6 +46,11 @@ class RunAssignment:
                 [str(value) for value in row] for row in result.expected_assignment
             ],
             lottery=[_to_term_dto(term, data) for term in result.terms],
+            lottery_complete=result.terms_complete,
+            drawn_assignment=[
+                _external_department(result.drawn_object(i), data) for i in range(data.n_agents)
+            ],
+            seed=result.seed,
             report=build_report(data, result),
             events=[_to_event_dto(event, data) for event in result.events],
         )

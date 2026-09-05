@@ -77,3 +77,31 @@ def test_request_body_rejects_unknown_fields(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_run_returns_drawn_assignment_and_seed(client: TestClient) -> None:
+    response = client.post("/api/v1/assignment/run", json={**VALID_BODY, "seed": 99})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["seed"] == 99
+    assert len(body["drawn_assignment"]) == 4
+    assert body["lottery_complete"] is True
+
+
+def test_same_seed_reproduces_the_same_draw(client: TestClient) -> None:
+    body = {**VALID_BODY, "seed": 2026}
+
+    first = client.post("/api/v1/assignment/run", json=body).json()
+    second = client.post("/api/v1/assignment/run", json=body).json()
+
+    assert first["drawn_assignment"] == second["drawn_assignment"]
+
+
+def test_run_rejects_input_over_the_size_limit(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/assignment/run",
+        json={**VALID_BODY, "agent_prefs": [[1, 2] for _ in range(25)]},
+    )
+
+    assert response.status_code == 422

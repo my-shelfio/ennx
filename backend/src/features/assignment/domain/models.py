@@ -25,10 +25,17 @@ from .events import AssignmentEvent
 # 期待割当行列のセル（社員 0-index, 対象 0-index）。∅ 列は n_objects。
 Cell = tuple[int, int]
 
-# 入力規模の上限。低コスト運用（Render Free 相当）の実行時間内に収めるための
-# 目安値であり、presentation 層のスキーマ上限と合わせて二重に守る。
-MAX_AGENTS = 100
-MAX_OBJECTS = 50
+# 入力規模の上限。低コスト運用（Render Free 相当）の実行時間内に収めるための値で、
+# presentation 層のスキーマ上限と合わせて二重に守る。
+#
+# マッチング（DA / FDA / CA）より小さいのは、くじを引く処理（lottery モジュール）の
+# 計算量が支配的なため。抽選は 1 手ごとに「分数セルを変数とする連立一次方程式」を
+# 厳密に解くので、コストは分数セル数（最悪 社員数 × 部署数）に対して急速に増える。
+# 全員が同じ希望順位を出す最悪ケースの実測（社員 24 人 × 部署 8 件で約 1 秒、
+# 30 × 10 で約 5 秒）から、余裕を見て次の値とする。引き上げるには方向探索を
+# 交代閉路の探索に置き換える最適化が必要になる。
+MAX_AGENTS = 24
+MAX_OBJECTS = 8
 MAX_UPPER_CONSTRAINTS = 200
 
 
@@ -92,9 +99,15 @@ class AssignmentInput:
         if n_o == 0:
             raise ValueError("対象（部署・案件）が 1 つもありません")
         if n_a > MAX_AGENTS:
-            raise ValueError(f"社員数が上限 {MAX_AGENTS} 人を超えています: {n_a}")
+            raise ValueError(
+                f"社員数が上限 {MAX_AGENTS} 人を超えています（{n_a} 人）。"
+                "くじを引く計算が重くなるため、対象を絞って実行してください"
+            )
         if n_o > MAX_OBJECTS:
-            raise ValueError(f"対象数が上限 {MAX_OBJECTS} 件を超えています: {n_o}")
+            raise ValueError(
+                f"部署数が上限 {MAX_OBJECTS} 件を超えています（{n_o} 件）。"
+                "くじを引く計算が重くなるため、対象を絞って実行してください"
+            )
         for i, prefs in enumerate(self.agent_prefs):
             if len(set(prefs)) != len(prefs):
                 raise ValueError(f"社員 {i} の希望順位リストに重複があります: {prefs}")
@@ -198,13 +211,31 @@ class AssignmentResult:
 
 @dataclass(frozen=True, kw_only=True)
 class LotteryResult(AssignmentResult):
-    """期待割当を純割当のくじに分解した結果。
+    """期待割当を純割当のくじにして配れる形にした結果。
+
+    くじの全列挙は項数が最悪 2^(制約集合数) になり、実用規模の入力では現実的で
+    ないため、常に得られるのは「1 回引いた結果」（drawn_assignment）である。
+    全列挙できた場合に限り terms に全項が入り、terms_complete が True になる。
 
     Attributes:
-        terms: くじの項（重みの降順）。重みの総和は 1。
+        terms: くじの項（重みの降順）。全列挙できなかった場合は空リスト。
+        terms_complete: terms がくじの全項かどうか。
+        drawn_assignment: 抽選 1 回分の純割当（整数行列）。
+        seed: 抽選に使った乱数シード。同じ入力・同じシードなら同じ結果になる。
     """
 
     terms: list[LotteryTerm] = field(default_factory=list)
+    terms_complete: bool = False
+    drawn_assignment: list[list[int]] = field(default_factory=list)
+    seed: int = 0
+
+    def drawn_object(self, agent: int) -> int:
+        """抽選結果における社員 agent の割当先の 0-index を返す（∅ は列数 - 1）。"""
+        row = self.drawn_assignment[agent]
+        for j, value in enumerate(row):
+            if value >= 1:
+                return j
+        return len(row) - 1
 
 
 def build_rank(data: AssignmentInput) -> list[list[int]]:

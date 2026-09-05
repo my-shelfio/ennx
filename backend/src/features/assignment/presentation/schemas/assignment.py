@@ -6,7 +6,8 @@ DTO と相互変換する。OpenAPI スキーマの源泉となり、フロン�
 
 分数は情報を落とさないよう "1/2" 形式の既約文字列で返す。丸めは表示側の責務。
 
-入力上限: 部署 ≤ 50・社員 ≤ 100（domain 層の上限と揃える）。
+入力上限: 社員 ≤ 24・部署 ≤ 8（domain 層の上限と揃える）。マッチングより小さいのは、
+くじを引く処理の計算量が分数の成分数に対して急速に増えるため。
 """
 
 from __future__ import annotations
@@ -25,8 +26,8 @@ from features.assignment.application.dto.results import (
 )
 from shared.presentation.schemas import FieldErrorSchema, ReportItemSchema
 
-MAX_DEPARTMENTS = 50
-MAX_EMPLOYEES = 100
+MAX_DEPARTMENTS = 8
+MAX_EMPLOYEES = 24
 
 
 class AssignmentConstraintEntrySchema(BaseModel):
@@ -67,6 +68,11 @@ class AssignmentRequestSchema(BaseModel):
     constraints: list[AssignmentConstraintEntrySchema] | None = Field(
         default=None, description="追加の上限制約（general のみ指定可）"
     )
+    seed: int | None = Field(
+        default=None,
+        ge=0,
+        description="くじを引く乱数シード（省略時はサーバーが生成し、レスポンスに含めて返す）",
+    )
 
     def to_dto(self) -> AssignmentRequest:
         """application 層の入力 DTO へ変換する。"""
@@ -81,6 +87,7 @@ class AssignmentRequestSchema(BaseModel):
                 if self.constraints is not None
                 else None
             ),
+            seed=self.seed,
         )
 
     @classmethod
@@ -100,6 +107,7 @@ class AssignmentRequestSchema(BaseModel):
                 if dto.constraints is not None
                 else None
             ),
+            seed=dto.seed,
         )
 
 
@@ -144,7 +152,16 @@ class AssignmentRunResponse(BaseModel):
             "最終列（index = 部署数）は未配属を表す。"
         )
     )
-    lottery: list[LotteryTermSchema] = Field(description="確定的な配属のくじ（重みの降順）")
+    lottery: list[LotteryTermSchema] = Field(
+        description="確定的な配属のくじの全項（重みの降順）。全項を列挙できなかった場合は空配列"
+    )
+    lottery_complete: bool = Field(description="lottery がくじの全項なら true")
+    drawn_assignment: list[int] = Field(
+        description=(
+            "抽選 1 回分の配属。drawn_assignment[i] = 社員 i の配属先部署 0-index（-1 = 未配属）"
+        )
+    )
+    seed: int = Field(description="抽選に使った乱数シード（同じ入力・同じシードで再現できる）")
     report: list[ReportItemSchema] = Field(description="性質レポート")
     events: list[AssignmentEventSchema] = Field(description="イーティング過程のイベントログ")
 
@@ -162,6 +179,9 @@ class AssignmentRunResponse(BaseModel):
                 LotteryTermSchema(weight=term.weight, assignment=term.assignment)
                 for term in dto.lottery
             ],
+            lottery_complete=dto.lottery_complete,
+            drawn_assignment=dto.drawn_assignment,
+            seed=dto.seed,
             report=[
                 ReportItemSchema(
                     label=item.label,

@@ -39,6 +39,8 @@ class AssignmentRequest:
         employee_names: 社員の表示名（省略時は「社員1」〜）。
         department_names: 部署の表示名（省略時は「部署1」〜）。
         constraints: 追加の上限制約（general のみ任意指定）。
+        seed: くじを引くときの乱数シード。省略時はその都度生成し、レスポンスに
+            含めて返す（同じ入力・同じシードなら同じ抽選結果を再現できる）。
     """
 
     constraint_type: str
@@ -47,6 +49,7 @@ class AssignmentRequest:
     employee_names: list[str] | None = None
     department_names: list[str] | None = None
     constraints: list[ConstraintEntry] | None = None
+    seed: int | None = None
 
     @property
     def num_employees(self) -> int:

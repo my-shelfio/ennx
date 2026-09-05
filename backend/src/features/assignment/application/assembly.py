@@ -10,6 +10,7 @@ RunAssignment / ValidateAssignmentInput の両ユースケースが共用する�
 
 from __future__ import annotations
 
+import random
 from fractions import Fraction
 
 from features.assignment.application.constraints import get_constraint_spec, is_valid_constraint
@@ -22,7 +23,13 @@ from features.assignment.application.meta import (
 )
 from features.assignment.domain import checks
 from features.assignment.domain.constraints import build_constraint_structure
-from features.assignment.domain.lottery import DecompositionError, decompose, ensure_decomposable
+from features.assignment.domain.lottery import (
+    DecompositionError,
+    LotteryTooLargeError,
+    decompose,
+    ensure_decomposable,
+    sample_pure_assignment,
+)
 from features.assignment.domain.models import (
     AssignmentInput,
     AssignmentResult,
@@ -127,20 +134,50 @@ def build_domain_input(request: AssignmentRequest) -> AssignmentInput:
     return data
 
 
-def run_mechanism(data: AssignmentInput) -> LotteryResult:
-    """PS を実行し、期待割当を確定的な配属のくじに分解する。
+def run_mechanism(data: AssignmentInput, seed: int | None = None) -> LotteryResult:
+    """PS を実行し、期待割当を確定的な配属のくじにして返す。
+
+    くじは常に「1 回引いた結果」を返す。全項の列挙は項数が最悪
+    2^(制約集合数) になり実用規模では現実的でないため、上限内に収まった場合に
+    限って全項を添える（terms_complete=True）。上限を超えた場合は抽選結果だけを
+    返し、エラーにはしない。
+
+    Args:
+        data: 割り当て問題の入力。
+        seed: 抽選に使う乱数シード。省略時はその都度生成する。返り値に含めるため、
+            同じ入力・同じシードで再実行すれば同じ抽選結果を再現できる。
 
     Raises:
-        InvalidAssignmentInputError: 入力規模が大きすぎて分解を打ち切った場合。
+        InvalidAssignmentInputError: 抽選そのものが成立しない場合
+            （クォータ違反・bihierarchy でない制約構造）。
     """
     result = probabilistic_serial(data)
     structure = build_constraint_structure(data)
+    resolved_seed = random.randrange(2**32) if seed is None else seed
+
     try:
-        terms = decompose(result.expected_assignment, structure)
+        drawn = sample_pure_assignment(
+            result.expected_assignment, structure, random.Random(resolved_seed)
+        )
     except DecompositionError as exc:
         raise InvalidAssignmentInputError([FieldError(field=None, message=str(exc))]) from exc
+
+    try:
+        terms = decompose(result.expected_assignment, structure)
+        terms_complete = True
+    except LotteryTooLargeError:
+        # 全項は出せないが抽選は成立する。結果画面は抽選結果を主役にして
+        # 「全体像は省略した」ことを伝える。
+        terms = []
+        terms_complete = False
+
     return LotteryResult(
-        expected_assignment=result.expected_assignment, events=result.events, terms=terms
+        expected_assignment=result.expected_assignment,
+        events=result.events,
+        terms=terms,
+        terms_complete=terms_complete,
+        drawn_assignment=drawn,
+        seed=resolved_seed,
     )
 
 
@@ -215,16 +252,17 @@ def build_report(data: AssignmentInput, result: AssignmentResult) -> list[Report
             )
 
     if isinstance(result, LotteryResult):
-        items.append(
-            ReportItem(
-                label="くじへの分解",
-                status="ok",
-                detail=(
-                    f"期待割当を {len(result.terms)} 通りの確定的な配属に分解しました。"
-                    "どの配属を引いても受け入れ人数と追加制約を満たします。"
-                ),
+        detail = (
+            f"期待割当を {len(result.terms)} 通りの確定的な配属に分解し、そこから 1 通りを"
+            "抽選しました。どの配属を引いても受け入れ人数と追加制約を満たします。"
+            if result.terms_complete
+            else (
+                "期待割当から確定的な配属を 1 通り抽選しました。組み合わせが多いため"
+                "くじの全体像（全パターンとその確率）は省略していますが、抽選結果は"
+                "受け入れ人数と追加制約を満たします。"
             )
         )
+        items.append(ReportItem(label="くじへの分解", status="ok", detail=detail))
 
     items.append(
         ReportItem(

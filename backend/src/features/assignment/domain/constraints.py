@@ -168,6 +168,17 @@ def is_hierarchy(sets: list[ConstraintSet]) -> bool:
     return not any(crosses(s.cells, t.cells) for s, t in combinations(sets, 2))
 
 
+def _crossing_candidates(sets: list[ConstraintSet]) -> list[ConstraintSet]:
+    """交差しうる制約集合だけを残す（単集合を除外する）。
+
+    要素が 1 つの集合は、相手に含まれるか互いに素かのどちらかにしかならないため、
+    定義上どの集合とも交差しない。制約構造の大半は単集合制約（社員数 × 列数）が
+    占めるので、これを除くだけで交差判定の対象が 2 桁減り、実用的な入力規模でも
+    判定が一瞬で終わる。
+    """
+    return [cs for cs in sets if len(cs.cells) > 1]
+
+
 def find_bihierarchy(
     structure: ConstraintStructure,
 ) -> tuple[list[ConstraintSet], list[ConstraintSet]] | None:
@@ -175,8 +186,12 @@ def find_bihierarchy(
 
     交差グラフ（頂点 = 制約集合、辺 = 交差する組）が 2 部グラフであることと
     bihierarchy であることは同値。BFS による 2 彩色で判定する。
+
+    単集合はどの集合とも交差しないため彩色の対象から外し、どちらの階層に入れても
+    階層性が保たれることから第 1 階層にまとめて加える。
     """
-    sets = structure.sets
+    singletons = [cs for cs in structure.sets if len(cs.cells) <= 1]
+    sets = _crossing_candidates(structure.sets)
     size = len(sets)
     adjacency: list[list[int]] = [[] for _ in range(size)]
     for u, v in combinations(range(size), 2):
@@ -199,7 +214,7 @@ def find_bihierarchy(
                 elif color[v] == color[u]:
                     return None  # 奇数長の閉路 → 2 彩色不能
     return (
-        [s for s, c in zip(sets, color, strict=True) if c == 0],
+        [s for s, c in zip(sets, color, strict=True) if c == 0] + singletons,
         [s for s, c in zip(sets, color, strict=True) if c == 1],
     )
 
@@ -210,8 +225,11 @@ def find_odd_cycle(structure: ConstraintStructure) -> list[ConstraintSet] | None
     3 つ組 (S1, S2, S3) について S1∩S2\\S3・S2∩S3\\S1・S1∩S3\\S2 のいずれも
     非空なら奇サイクル。長さ 5 以上の奇サイクルは探索しないため、None は
     「奇サイクルが存在しない」ことを意味しない（bihierarchy 判定が正）。
+
+    単集合は 3 つ組に含まれ得ない（単集合 {x} が S2 と S3 の両方に対して条件を
+    満たすには x ∈ S2 かつ x ∉ S3 かつ x ∈ S3 が要る）ため、探索対象から外す。
     """
-    for s1, s2, s3 in combinations(structure.sets, 3):
+    for s1, s2, s3 in combinations(_crossing_candidates(structure.sets), 3):
         a, b, c = s1.cells, s2.cells, s3.cells
         if (a & b) - c and (b & c) - a and (a & c) - b:
             return [s1, s2, s3]

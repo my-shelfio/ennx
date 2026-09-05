@@ -152,3 +152,53 @@ def test_meta_lists_constraint_types_and_upper_constraints() -> None:
     assert [meta.key for meta in constraint_types] == ["capacity_only", "general"]
     assert all(meta.mechanism.key == "ps" for meta in constraint_types)
     assert [meta.key for meta in upper_constraints] == ["ng_pair", "group_quota"]
+
+
+def test_run_returns_a_reproducible_drawn_assignment() -> None:
+    """抽選結果は返され、同じシードなら再現できる。"""
+    first = RunAssignment().execute(_request(seed=123))
+    second = RunAssignment().execute(_request(seed=123))
+
+    assert first.drawn_assignment == second.drawn_assignment
+    assert first.seed == 123
+    assert len(first.drawn_assignment) == 4
+    assert all(-1 <= department <= 1 for department in first.drawn_assignment)
+
+
+def test_run_generates_a_seed_when_omitted() -> None:
+    """シードを省略してもレスポンスには実際に使ったシードが入る。"""
+    outcome = RunAssignment().execute(_request())
+
+    assert outcome.seed >= 0
+    assert RunAssignment().execute(_request(seed=outcome.seed)).drawn_assignment == (
+        outcome.drawn_assignment
+    )
+
+
+def test_drawn_assignment_respects_capacities() -> None:
+    """抽選結果は受け入れ人数を超えない。"""
+    outcome = RunAssignment().execute(_request())
+
+    for department, capacity in enumerate(outcome.capacities):
+        assert outcome.drawn_assignment.count(department) <= capacity
+
+
+def test_large_input_returns_a_draw_without_the_full_lottery() -> None:
+    """全列挙できない規模でも、抽選結果は返る（エラーにしない）。"""
+    outcome = RunAssignment().execute(
+        _request(capacities=[3, 3, 3, 3], agent_prefs=[[1, 2, 3, 4] for _ in range(12)])
+    )
+
+    assert outcome.lottery_complete is False
+    assert outcome.lottery == []
+    assert len(outcome.drawn_assignment) == 12
+    detail = next(item.detail for item in outcome.report if item.label == "くじへの分解")
+    assert "省略" in detail
+
+
+def test_input_over_the_size_limit_is_rejected() -> None:
+    """入力規模の上限を超えると検証エラーになる。"""
+    outcome = ValidateAssignmentInput().execute(_request(agent_prefs=[[1, 2] for _ in range(25)]))
+
+    assert not outcome.valid
+    assert any("上限" in error.message for error in outcome.errors)

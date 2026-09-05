@@ -67,7 +67,12 @@ class AssignmentOutcome:
         capacities: 部署の受け入れ人数。
         expected_assignment: 期待割当行列。行が社員、列が部署で、
             最終列（index = 部署数）は未配属（∅）を表す。各成分は分数の文字列。
-        lottery: 期待割当を分解した確定的な配属のくじ（重みの降順）。
+        lottery: 確定的な配属のくじの全項（重みの降順）。全項を列挙できなかった
+            場合は空リストになる（lottery_complete=False）。
+        lottery_complete: lottery がくじの全項かどうか。
+        drawn_assignment: 抽選 1 回分の配属。drawn_assignment[i] = 社員 i の
+            配属先部署の 0-index（-1 = 未配属）。
+        seed: 抽選に使った乱数シード。同じ入力・同じシードで再現できる。
         report: 性質レポート。
         events: イーティング過程のイベントログ。
     """
@@ -79,6 +84,9 @@ class AssignmentOutcome:
     capacities: list[int]
     expected_assignment: list[list[str]]
     lottery: list[LotteryTermDTO]
+    lottery_complete: bool
+    drawn_assignment: list[int]
+    seed: int
     report: list[ReportItem]
     events: list[AssignmentEventDTO] = field(default_factory=list)
 

@@ -27,9 +27,11 @@ from .events import AssignmentEvent, AssignmentEventType, reconstruct_expected_a
 from .lottery import (
     MAX_LOTTERY_TERMS,
     DecompositionError,
+    LotteryTooLargeError,
     decompose,
     ensure_decomposable,
     reconstruct,
+    sample_pure_assignment,
     verify,
 )
 from .models import (
@@ -60,6 +62,7 @@ __all__ = [
     "ConstraintSet",
     "ConstraintStructure",
     "DecompositionError",
+    "LotteryTooLargeError",
     "LotteryResult",
     "LotteryTerm",
     "UpperConstraint",
@@ -79,6 +82,7 @@ __all__ = [
     "probabilistic_serial",
     "quota_violations",
     "reconstruct",
+    "sample_pure_assignment",
     "reconstruct_expected_assignment",
     "row_set",
     "verify",
