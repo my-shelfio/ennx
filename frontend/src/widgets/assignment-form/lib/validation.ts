@@ -2,11 +2,11 @@ import type { AssignmentInput } from "../../../entities/assignment";
 
 /**
  * 入力上限（バックエンドのスキーマ上限と揃える）。
- * 配属マッチングより小さいのは、くじを引く計算量が分数の成分数に対して
- * 急速に増えるため（サーバー側も同じ値で拒否する）。
+ * 配属マッチングより小さいのは、くじを引く計算量が分数の成分数のおよそ 2 乗に
+ * なるため（サーバー側も同じ値で拒否する）。
  */
-export const EMPLOYEE_COUNT_MAX = 24;
-export const DEPARTMENT_COUNT_MAX = 8;
+export const EMPLOYEE_COUNT_MAX = 50;
+export const DEPARTMENT_COUNT_MAX = 15;
 
 /**
  * 送信前のクライアント側検証。

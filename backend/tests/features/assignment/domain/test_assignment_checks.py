@@ -16,8 +16,14 @@ from features.assignment.domain import (
     check_envy_free,
     check_equal_treatment,
     check_ordinal_efficiency,
-    check_strategy_proofness,
     probabilistic_serial,
+)
+
+# 耐戦略性の検証はコストが極端に大きく、意図的に domain の公開 API から外している
+# （application 層から誤って呼べないようにするため）。テストは実装モジュールから直接使う。
+from features.assignment.domain.checks import (
+    MAX_STRATEGY_PROOFNESS_OBJECTS,
+    check_strategy_proofness,
 )
 
 _EXAMPLE1 = AssignmentInput(agent_prefs=[[1, 2], [1, 2], [2, 1], [2, 1]], capacities=[1, 1])
@@ -181,3 +187,19 @@ def test_envy_is_ignored_when_the_swap_breaks_a_constraint() -> None:
 def _weakly_dominates_row(row_x: list[Fraction], row_y: list[Fraction]) -> bool:
     """先頭列（第 1 希望）の確率で弱支配を粗く判定するテスト用ヘルパ。"""
     return row_x[0] >= row_y[0]
+
+
+def test_strategy_proofness_refuses_large_inputs() -> None:
+    """対象数が上限を超える入力では、待たされる前にエラーになる。
+
+    全ての虚偽申告を列挙する検証なので、本番規模で呼ばれると応答が返らなくなる。
+    誤用に気づけるよう、その場で失敗させることを保証する。
+    """
+    objects = MAX_STRATEGY_PROOFNESS_OBJECTS + 1
+    data = AssignmentInput(
+        agent_prefs=[list(range(1, objects + 1))],
+        capacities=[1] * objects,
+    )
+
+    with pytest.raises(ValueError, match="耐戦略性の検証は対象"):
+        check_strategy_proofness(data, probabilistic_serial)

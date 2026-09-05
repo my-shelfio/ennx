@@ -87,7 +87,11 @@ def test_project_assignment_pipeline() -> None:
 
 
 def test_subcolumn_quota_decomposition() -> None:
-    """部分列制約（アファーマティブ・アクション型）付きの期待割当を分解する。"""
+    """部分列制約（アファーマティブ・アクション型）付きの期待割当を分解する。
+
+    行・列・部分列の 3 つの和がいずれも整数になるため、1 つのセルが 3 つの等式に属し、
+    方向探索は交代閉路では表せない。連立一次方程式の受け皿を通る経路の検証を兼ねる。
+    """
     matrix = [
         [Fraction(1, 2), Fraction(1, 5), Fraction(3, 10)],
         [Fraction(1, 2), Fraction(1, 2), Fraction(0)],

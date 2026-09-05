@@ -44,6 +44,12 @@ Matrix = list[list[Fraction]]
 # メカニズム = 入力を受け取り期待割当を返す関数（耐戦略性の検証で再実行する）
 Mechanism = Callable[[AssignmentInput], AssignmentResult]
 
+# 耐戦略性の検証で許容する対象数の上限。虚偽申告として (対象数 + 1)! 通りの申告を
+# 列挙し、そのたびにメカニズムを再実行するため、対象数が少し増えるだけで実行時間が
+# 桁で伸びる。テストからの小規模な検証のみを想定しているので、誤って本番の入力規模で
+# 呼ばれたときに待ち続けるのではなく、その場で失敗させる。
+MAX_STRATEGY_PROOFNESS_OBJECTS = 6
+
 
 @dataclass(frozen=True, kw_only=True)
 class CheckResult:
@@ -210,7 +216,17 @@ def check_strategy_proofness(data: AssignmentInput, mechanism: Mechanism) -> Che
 
     各社員について対象の全順序を虚偽申告として列挙し、メカニズムを再実行する。
     計算量は社員数 × (対象数 + 1)! に比例するため、テストでの小規模な検証に限る。
+    本番の実行経路（application 層）からは呼ばない。
+
+    Raises:
+        ValueError: 対象数が MAX_STRATEGY_PROOFNESS_OBJECTS を超える場合。
     """
+    if data.n_objects > MAX_STRATEGY_PROOFNESS_OBJECTS:
+        raise ValueError(
+            f"耐戦略性の検証は対象 {MAX_STRATEGY_PROOFNESS_OBJECTS} 件までです"
+            f"（{data.n_objects} 件）。全ての虚偽申告を列挙するため、"
+            "これ以上の規模では現実的な時間で終わりません"
+        )
     rank = build_rank(data)
     truthful = mechanism(data).expected_assignment
     violations: list[str] = []

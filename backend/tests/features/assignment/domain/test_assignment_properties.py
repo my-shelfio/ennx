@@ -6,12 +6,14 @@
 - PS: イベントログから期待割当行列を再構成できる
 - PS: 水平性・無羨望性・順序効率性（Bogomolnaia and Moulin, 2001 の定理の実装保証）
 - 一般化BvN: 重みの総和が 1・再構成が元の期待割当と一致・全項が制約を満たす
+- 抽選: 引いた純割当が行和 1・供給数・上限制約をすべて満たす
 
 実行時間がかかるため slow マーカーを付与する（pre-commit では除外、CI では実行）。
 """
 
 from __future__ import annotations
 
+import random
 from fractions import Fraction
 
 import pytest
@@ -30,6 +32,7 @@ from features.assignment.domain import (
     quota_violations,
     reconstruct,
     reconstruct_expected_assignment,
+    sample_pure_assignment,
     verify,
 )
 
@@ -143,3 +146,26 @@ def test_lottery_decomposition_is_valid(data: AssignmentInput) -> None:
         assert quota_violations(pure, structure) == []
         for row in term.assignment:
             assert sum(row) == 1
+
+
+@given(assignment_inputs(with_constraints=True))
+@settings(max_examples=60, deadline=None)
+def test_sampled_assignment_is_feasible(data: AssignmentInput) -> None:
+    """抽選で引いた純割当は、行和 1・供給数・上限制約をすべて満たす。
+
+    抽選は方向探索（交代閉路と連立一次方程式の 2 経路）の結果を使って進むため、
+    どちらの経路を通っても実行可能な割当に着地することをここで保証する。
+    """
+    matrix = probabilistic_serial(data).expected_assignment
+    structure = build_constraint_structure(data)
+
+    drawn = sample_pure_assignment(matrix, structure, random.Random(0))
+
+    pure = [[Fraction(value) for value in row] for row in drawn]
+    assert quota_violations(pure, structure) == []
+    for row in drawn:
+        assert sum(row) == 1
+    for obj in range(data.n_objects):
+        assert sum(row[obj] for row in drawn) <= data.capacities[obj]
+    for constraint in data.constraints:
+        assert sum(drawn[i][j] for (i, j) in constraint.cells) <= constraint.upper

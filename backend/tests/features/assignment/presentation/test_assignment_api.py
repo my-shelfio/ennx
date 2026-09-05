@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from features.assignment.presentation.schemas.assignment import MAX_EMPLOYEES
 from main import create_app
 
 VALID_BODY: dict[str, Any] = {
@@ -99,9 +100,10 @@ def test_same_seed_reproduces_the_same_draw(client: TestClient) -> None:
 
 
 def test_run_rejects_input_over_the_size_limit(client: TestClient) -> None:
+    """スキーマ上限を 1 人超えた入力は 422 で拒否される（上限値の変更に追従する）。"""
     response = client.post(
         "/api/v1/assignment/run",
-        json={**VALID_BODY, "agent_prefs": [[1, 2] for _ in range(25)]},
+        json={**VALID_BODY, "agent_prefs": [[1, 2] for _ in range(MAX_EMPLOYEES + 1)]},
     )
 
     assert response.status_code == 422

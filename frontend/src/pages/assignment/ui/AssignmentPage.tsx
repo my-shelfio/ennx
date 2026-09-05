@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { useAssignmentInputStore, useAssignmentResultStore } from "../../../entities/assignment";
+import { ExportAssignmentMenu } from "../../../features/export-assignment-result";
 import { useAssignmentSample, useRunAssignment } from "../../../features/run-assignment";
 import { useToast } from "../../../shared/ui";
 import { AssignmentForm } from "../../../widgets/assignment-form";
@@ -25,9 +26,11 @@ export function AssignmentPage() {
     document.title = "割り当て（PS メカニズム） | ennx";
   }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = (seed?: number) => {
     clear();
-    run.mutate(input, {
+    // シードは実行時のパラメータとして扱い、入力ストアには保存しない
+    // （未指定ならサーバーが毎回生成する既定の挙動を保つ）。
+    run.mutate(seed === undefined ? input : { ...input, seed }, {
       onSuccess: setResult,
       onError: (error) =>
         toast({
@@ -67,14 +70,21 @@ export function AssignmentPage() {
       <AssignmentForm
         input={input}
         onChange={(next) => setInput(next)}
-        onSubmit={handleSubmit}
+        onSubmit={() => handleSubmit()}
         onLoadSample={handleLoadSample}
         submitting={run.isPending || sample.isPending}
       />
 
       {result && (
         <>
-          <AssignmentResultPanel result={result} />
+          <div className="flex justify-end">
+            <ExportAssignmentMenu input={input} result={result} />
+          </div>
+          <AssignmentResultPanel
+            result={result}
+            onRedraw={() => handleSubmit()}
+            onReproduce={(seed) => handleSubmit(seed)}
+          />
           <AssignmentStepPlayer result={result} />
         </>
       )}

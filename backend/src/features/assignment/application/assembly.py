@@ -26,9 +26,8 @@ from features.assignment.domain.constraints import build_constraint_structure
 from features.assignment.domain.lottery import (
     DecompositionError,
     LotteryTooLargeError,
-    decompose,
     ensure_decomposable,
-    sample_pure_assignment,
+    plan_lottery,
 )
 from features.assignment.domain.models import (
     AssignmentInput,
@@ -156,14 +155,15 @@ def run_mechanism(data: AssignmentInput, seed: int | None = None) -> LotteryResu
     resolved_seed = random.randrange(2**32) if seed is None else seed
 
     try:
-        drawn = sample_pure_assignment(
-            result.expected_assignment, structure, random.Random(resolved_seed)
-        )
+        # 抽選と全列挙は同じ前処理（形・クォータ・bihierarchy の検証）を要するため、
+        # 1 度だけ検証して両方で使い回す。
+        plan = plan_lottery(result.expected_assignment, structure)
+        drawn = plan.sample(random.Random(resolved_seed))
     except DecompositionError as exc:
         raise InvalidAssignmentInputError([FieldError(field=None, message=str(exc))]) from exc
 
     try:
-        terms = decompose(result.expected_assignment, structure)
+        terms = plan.enumerate_terms()
         terms_complete = True
     except LotteryTooLargeError:
         # 全項は出せないが抽選は成立する。結果画面は抽選結果を主役にして

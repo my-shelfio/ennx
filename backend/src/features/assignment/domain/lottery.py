@@ -33,6 +33,8 @@ from __future__ import annotations
 
 import math
 import random
+from collections import deque
+from dataclasses import dataclass
 from fractions import Fraction
 
 from .constraints import (
@@ -66,10 +68,116 @@ class LotteryTooLargeError(DecompositionError):
     """
 
 
+# 交代閉路の探索で使う仮想頂点。保つべき和が無い側の端をここへ集約する。
+_OUTSIDE = -1
+
+
+@dataclass(frozen=True)
+class _SetIndex:
+    """制約集合の索引（セル → そのセルを含む制約集合）。
+
+    方向を 1 手動かすたびに全制約集合を走査すると、走査だけで
+    (制約集合数 × 手数) に比例する時間がかかる。動かすセルを含まない集合は和が
+    変わらないので見る必要がなく、この索引で候補を絞ると計算量が実際に絡み合う
+    範囲だけに収まる。
+
+    Attributes:
+        sets: 制約集合の一覧（`structure.sets` と同じ順序）。
+        by_cell: セル → そのセルを含む制約集合の添字。
+    """
+
+    sets: list[ConstraintSet]
+    by_cell: dict[Cell, list[int]]
+
+    def affected(self, direction: dict[Cell, Fraction]) -> list[int]:
+        """方向が和を変えうる制約集合の添字を返す（重複なし・昇順）。"""
+        touched: set[int] = set()
+        for cell in direction:
+            touched.update(self.by_cell.get(cell, ()))
+        return sorted(touched)
+
+
+def _build_index(structure: ConstraintStructure) -> _SetIndex:
+    """制約構造からセル索引を組み立てる（1 回の分解・抽選につき 1 度だけ）。"""
+    by_cell: dict[Cell, list[int]] = {}
+    for position, cs in enumerate(structure.sets):
+        for cell in cs.cells:
+            by_cell.setdefault(cell, []).append(position)
+    return _SetIndex(sets=list(structure.sets), by_cell=by_cell)
+
+
 # 抽選 1 回あたりの分岐回数の上限。各分岐で「和が新たに整数になる制約集合」が
 # 1 つ以上増えるため理論上は |H| 回で終わるが、実装の不具合で止まらなくなる
 # 事態を避けるための安全弁として置く。
 _MAX_SAMPLE_STEPS = 100_000
+
+
+@dataclass(frozen=True)
+class LotteryPlan:
+    """検証済みの期待割当と制約構造。
+
+    抽選（`sample`）と全列挙（`enumerate_terms`）は同じ前処理を必要とする。
+    入口で毎回検証すると、1 回の実行で同じ検証（行列の形・クォータ充足・
+    bihierarchy 判定）を二度払うことになるため、検証済みの状態をこの型にまとめる。
+    組み立ては `plan_lottery` のみが行い、未検証の状態で作れないようにする。
+    """
+
+    matrix: Matrix
+    _index: _SetIndex
+
+    def sample(self, rng: random.Random) -> list[list[int]]:
+        """純割当を 1 つ抽選する（詳細は `sample_pure_assignment`）。"""
+        current = self.matrix
+        for _ in range(_MAX_SAMPLE_STEPS):
+            direction = _find_direction(current, self._index)
+            if direction is None:
+                return [[int(value) for value in row] for row in current]
+
+            alpha = _max_step(current, self._index, direction, 1)
+            beta = _max_step(current, self._index, direction, -1)
+            if alpha == 0 and beta == 0:
+                raise DecompositionError(
+                    "移動可能な方向が見つかりませんでした（制約構造を確認してください）"
+                )
+            gamma = beta / (alpha + beta)
+            current = (
+                _shift(current, direction, alpha)
+                if _draw_below(rng, gamma)
+                else _shift(current, direction, -beta)
+            )
+        raise DecompositionError("抽選が終了しませんでした（制約構造を確認してください）")
+
+    def enumerate_terms(self) -> list[LotteryTerm]:
+        """くじの全項を列挙する（詳細は `decompose`）。"""
+        fractional = sum(1 for row in self.matrix for value in row if value.denominator != 1)
+        if fractional > MAX_FULL_ENUMERATION_CELLS:
+            raise LotteryTooLargeError(
+                f"分数の成分が {fractional} 個あり、くじの全列挙は現実的ではありません"
+            )
+        terms: list[LotteryTerm] = []
+        _decompose(self.matrix, self._index, Fraction(1), terms)
+        return _merge(terms)
+
+
+def plan_lottery(matrix: Matrix, structure: ConstraintStructure) -> LotteryPlan:
+    """期待割当と制約構造を検証し、抽選・全列挙に使える形にまとめて返す。
+
+    1 回の実行で抽選と全列挙の両方を行う場合は、本関数で 1 度だけ検証してから
+    `LotteryPlan` のメソッドを呼ぶ（`decompose` / `sample_pure_assignment` を
+    続けて呼ぶと同じ検証を二度実行することになる）。
+
+    Args:
+        matrix: 期待割当行列（n_agents 行 × n_columns 列）。
+        structure: 制約構造（単集合制約を含むこと）。
+
+    Raises:
+        DecompositionError: 期待割当の形が制約構造と合わない、クォータを満たさない、
+            または制約構造が bihierarchy でない場合。
+    """
+    _ensure_shape(matrix, structure)
+    _ensure_quotas(matrix, structure)
+    ensure_decomposable(structure)
+    return LotteryPlan(matrix=matrix, _index=_build_index(structure))
 
 
 def decompose(matrix: Matrix, structure: ConstraintStructure) -> list[LotteryTerm]:
@@ -87,24 +195,7 @@ def decompose(matrix: Matrix, structure: ConstraintStructure) -> list[LotteryTer
             bihierarchy でない場合。
         LotteryTooLargeError: 項数が上限を超えた場合。
     """
-    if len(matrix) != structure.n_agents or any(len(r) != structure.n_columns for r in matrix):
-        raise DecompositionError("期待割当行列の形が制約構造と一致しません")
-
-    violations = quota_violations(matrix, structure)
-    if violations:
-        raise DecompositionError("期待割当が制約を満たしていません: " + " / ".join(violations))
-
-    ensure_decomposable(structure)
-
-    fractional = sum(1 for row in matrix for value in row if value.denominator != 1)
-    if fractional > MAX_FULL_ENUMERATION_CELLS:
-        raise LotteryTooLargeError(
-            f"分数の成分が {fractional} 個あり、くじの全列挙は現実的ではありません"
-        )
-
-    terms: list[LotteryTerm] = []
-    _decompose(matrix, structure, Fraction(1), terms)
-    return _merge(terms)
+    return plan_lottery(matrix, structure).enumerate_terms()
 
 
 def ensure_decomposable(structure: ConstraintStructure) -> None:
@@ -175,29 +266,7 @@ def sample_pure_assignment(
         DecompositionError: 期待割当がクォータを満たさない、制約構造が
             bihierarchy でない、または分岐が上限回数を超えた場合。
     """
-    _ensure_shape(matrix, structure)
-    _ensure_quotas(matrix, structure)
-    ensure_decomposable(structure)
-
-    current = matrix
-    for _ in range(_MAX_SAMPLE_STEPS):
-        direction = _find_direction(current, structure)
-        if direction is None:
-            return [[int(value) for value in row] for row in current]
-
-        alpha = _max_step(current, structure, direction, 1)
-        beta = _max_step(current, structure, direction, -1)
-        if alpha == 0 and beta == 0:
-            raise DecompositionError(
-                "移動可能な方向が見つかりませんでした（制約構造を確認してください）"
-            )
-        gamma = beta / (alpha + beta)
-        current = (
-            _shift(current, direction, alpha)
-            if _draw_below(rng, gamma)
-            else _shift(current, direction, -beta)
-        )
-    raise DecompositionError("抽選が終了しませんでした（制約構造を確認してください）")
+    return plan_lottery(matrix, structure).sample(rng)
 
 
 def _draw_below(rng: random.Random, threshold: Fraction) -> bool:
@@ -224,7 +293,7 @@ def _ensure_quotas(matrix: Matrix, structure: ConstraintStructure) -> None:
 
 def _decompose(
     matrix: Matrix,
-    structure: ConstraintStructure,
+    index: _SetIndex,
     weight: Fraction,
     out: list[LotteryTerm],
 ) -> None:
@@ -232,30 +301,36 @@ def _decompose(
     if len(out) >= MAX_LOTTERY_TERMS:
         raise LotteryTooLargeError(f"くじの項数が上限 {MAX_LOTTERY_TERMS} 件を超えました")
 
-    direction = _find_direction(matrix, structure)
+    direction = _find_direction(matrix, index)
     if direction is None:
         out.append(LotteryTerm(weight=weight, assignment=[[int(v) for v in row] for row in matrix]))
         return
 
-    alpha = _max_step(matrix, structure, direction, 1)
-    beta = _max_step(matrix, structure, direction, -1)
+    alpha = _max_step(matrix, index, direction, 1)
+    beta = _max_step(matrix, index, direction, -1)
     if alpha == 0 and beta == 0:
         raise DecompositionError(
             "移動可能な方向が見つかりませんでした（制約構造を確認してください）"
         )
 
     gamma = beta / (alpha + beta)
-    _decompose(_shift(matrix, direction, alpha), structure, weight * gamma, out)
-    _decompose(_shift(matrix, direction, -beta), structure, weight * (1 - gamma), out)
+    _decompose(_shift(matrix, direction, alpha), index, weight * gamma, out)
+    _decompose(_shift(matrix, direction, -beta), index, weight * (1 - gamma), out)
 
 
-def _find_direction(matrix: Matrix, structure: ConstraintStructure) -> dict[Cell, Fraction] | None:
+def _find_direction(matrix: Matrix, index: _SetIndex) -> dict[Cell, Fraction] | None:
     """整数セルを固定し、整数和の制約を保つ移動方向を 1 つ返す。無ければ None。
 
-    探索は分数セルの「連結成分」ごとに行う。和が整数の制約は成分をまたがないため、
-    ある成分に閉じた方向は他の成分の制約に影響しない。全分数セルを一度に扱うと
-    連立方程式の規模が (社員数 × 列数) まで膨らむのに対し、成分ごとなら実際に
-    絡み合っているセルだけで済み、実用規模の入力でも現実的な時間で解ける。
+    探索は 2 段構え。
+
+    1. **交代閉路**（`_graph_direction`）: 和が整数の制約を頂点、分数セルを辺とみなす
+       グラフに閉路があれば、その上で符号を交互に振るだけで方向になる。各頂点には
+       符号の異なる 2 本が接するので、和は変わらない。セル数に比例する時間で済む。
+    2. **連立一次方程式**（`_linear_direction`）: 1 つのセルが 3 つ以上の等式に属するなど
+       グラフで表せない制約構造では、分数セルを変数とする連立一次方程式を厳密に解く。
+       正確だが規模の 3 乗に近い時間がかかるため、あくまで受け皿とする。
+
+    どちらの経路でも、返す前に全ての等式を満たすことを検証する（`_preserves_sums`）。
     """
     free = [
         (i, j)
@@ -266,15 +341,170 @@ def _find_direction(matrix: Matrix, structure: ConstraintStructure) -> dict[Cell
     if not free:
         return None
 
-    integral_sets = [cs for cs in structure.sets if cs.total(matrix).denominator == 1]
+    is_integral = [cs.total(matrix).denominator == 1 for cs in index.sets]
+    direction = _graph_direction(free, index, is_integral)
+    if direction is not None:
+        return direction
+    return _linear_direction(free, index, is_integral)
+
+
+def _preserves_sums(
+    direction: dict[Cell, Fraction], index: _SetIndex, is_integral: list[bool]
+) -> bool:
+    """方向がすべての等式（和が整数の制約）の和を変えないか。
+
+    方向が触れないセルしか持たない制約集合は和が変わらないため、索引で絞った集合だけ
+    確認すれば十分。
+    """
+    for position in index.affected(direction):
+        if not is_integral[position]:
+            continue
+        total = sum(
+            (direction.get(cell, Fraction(0)) for cell in index.sets[position].cells),
+            Fraction(0),
+        )
+        if total != 0:
+            return False
+    return True
+
+
+def _graph_direction(
+    free: list[Cell], index: _SetIndex, is_integral: list[bool]
+) -> dict[Cell, Fraction] | None:
+    """交代閉路から方向を求める。グラフで表せない構造なら None。
+
+    各分数セルが属する等式は、標準的な制約構造では「その社員の行」と「その対象の列」の
+    高々 2 つになる（列の和が分数なら 1 つだけ）。そこで等式を頂点、セルを辺とする
+    多重グラフを作り、閉路上で符号を交互に振れば方向が得られる。等式に属さない側の端は
+    仮想頂点 OUTSIDE にまとめる。OUTSIDE には保つべき和が無いので、そこを通る閉路は
+    実質「制約されていない 2 つの端を結ぶ道」になる。
+    """
+    owners: dict[Cell, list[int]] = {}
+    for cell in free:
+        sets = [position for position in index.by_cell.get(cell, ()) if is_integral[position]]
+        if not sets:
+            return {cell: Fraction(1)}  # どの等式にも縛られていないセルは単独で動かせる
+        if len(sets) > 2:
+            return None  # 3 つ以上の等式が絡むとグラフで表せない
+        owners[cell] = sets
+
+    adjacency: dict[int, list[tuple[int, Cell]]] = {}
+    for cell, sets in owners.items():
+        left = sets[0]
+        right = sets[1] if len(sets) == 2 else _OUTSIDE
+        adjacency.setdefault(left, []).append((right, cell))
+        adjacency.setdefault(right, []).append((left, cell))
+
+    cycle = _find_cycle(adjacency)
+    if cycle is None:
+        return None
+
+    vertices, cells = cycle
+    # OUTSIDE には保つべき和が無いので、符号の折り返し（先頭と末尾の境目）をそこへ寄せる。
+    if _OUTSIDE in vertices:
+        offset = vertices.index(_OUTSIDE)
+        cells = cells[offset:] + cells[:offset]
+
+    direction = {
+        cell: Fraction(1) if position % 2 == 0 else Fraction(-1)
+        for position, cell in enumerate(cells)
+    }
+    return direction if _preserves_sums(direction, index, is_integral) else None
+
+
+def _find_cycle(
+    adjacency: dict[int, list[tuple[int, Cell]]],
+) -> tuple[list[int], list[Cell]] | None:
+    """多重グラフから単純閉路を 1 つ返す（頂点列とセル列）。
+
+    幅優先で全域森を作り、木に含まれない辺を 1 本見つけて、その両端から共通祖先まで
+    さかのぼる。返す `cells[t]` は `vertices[t]` と `vertices[t + 1]` を結び、最後の
+    セルは末尾の頂点と先頭の頂点を結ぶ。
+    """
+    parent_vertex: dict[int, int] = {}
+    parent_cell: dict[int, Cell] = {}
+    depth: dict[int, int] = {}
+
+    for root in adjacency:
+        if root in depth:
+            continue
+        depth[root] = 0
+        queue = deque([root])
+        while queue:
+            current = queue.popleft()
+            for neighbor, cell in adjacency[current]:
+                if neighbor in depth:
+                    continue
+                depth[neighbor] = depth[current] + 1
+                parent_vertex[neighbor] = current
+                parent_cell[neighbor] = cell
+                queue.append(neighbor)
+
+    tree_cells = set(parent_cell.values())
+    for start in adjacency:
+        for end, cell in adjacency[start]:
+            if cell in tree_cells:
+                continue
+            return _close_cycle(start, end, cell, parent_vertex, parent_cell, depth)
+    return None
+
+
+def _close_cycle(
+    start: int,
+    end: int,
+    cell: Cell,
+    parent_vertex: dict[int, int],
+    parent_cell: dict[int, Cell],
+    depth: dict[int, int],
+) -> tuple[list[int], list[Cell]]:
+    """木に含まれない辺 (start, end, cell) が閉じる閉路を組み立てる。"""
+    up_vertices: list[int] = [start]
+    up_cells: list[Cell] = []
+    down_vertices: list[int] = [end]
+    down_cells: list[Cell] = []
+
+    left, right = start, end
+    while depth[left] > depth[right]:
+        up_cells.append(parent_cell[left])
+        left = parent_vertex[left]
+        up_vertices.append(left)
+    while depth[right] > depth[left]:
+        down_cells.append(parent_cell[right])
+        right = parent_vertex[right]
+        down_vertices.append(right)
+    while left != right:
+        up_cells.append(parent_cell[left])
+        left = parent_vertex[left]
+        up_vertices.append(left)
+        down_cells.append(parent_cell[right])
+        right = parent_vertex[right]
+        down_vertices.append(right)
+
+    # start → 共通祖先 → end と辿り、最後に cell で start へ戻る。
+    vertices = up_vertices + down_vertices[-2::-1]
+    cells = up_cells + down_cells[::-1] + [cell]
+    return vertices, cells
+
+
+def _linear_direction(
+    free: list[Cell], index: _SetIndex, is_integral: list[bool]
+) -> dict[Cell, Fraction] | None:
+    """分数セルを変数とする連立一次方程式を厳密に解いて方向を求める。
+
+    探索は分数セルの「連結成分」ごとに行う。和が整数の制約は成分をまたがないため、
+    ある成分に閉じた方向は他の成分の制約に影響しない。全分数セルを一度に扱うと
+    連立方程式の規模が (社員数 × 列数) まで膨らむのに対し、成分ごとなら実際に
+    絡み合っているセルだけで済む。
+    """
+    integral_sets = [cs for cs, integral in zip(index.sets, is_integral, strict=True) if integral]
     for component in _free_components(free, integral_sets):
-        index = {cell: k for k, cell in enumerate(component)}
+        position_of = {cell: k for k, cell in enumerate(component)}
         rows: list[list[Fraction]] = []
         for cs in integral_sets:
             vector = [Fraction(0)] * len(component)
             touched = False
             for cell in cs.cells:
-                position = index.get(cell)
+                position = position_of.get(cell)
                 if position is not None:
                     vector[position] = Fraction(1)
                     touched = True
@@ -348,11 +578,16 @@ def _null_space_vector(rows: list[list[Fraction]], n_vars: int) -> list[Fraction
 
 
 def _max_step(
-    matrix: Matrix, structure: ConstraintStructure, direction: dict[Cell, Fraction], sign: int
+    matrix: Matrix, index: _SetIndex, direction: dict[Cell, Fraction], sign: int
 ) -> Fraction:
-    """matrix + sign·t·direction が各制約の床・天井の間に留まる最大の t を返す。"""
+    """matrix + sign·t·direction が各制約の床・天井の間に留まる最大の t を返す。
+
+    方向が触れないセルしか持たない制約集合は和が変わらないので、索引で絞った集合だけ
+    見れば足りる。
+    """
     best: Fraction | None = None
-    for cs in structure.sets:
+    for position in index.affected(direction):
+        cs = index.sets[position]
         delta = sum((direction.get(cell, Fraction(0)) for cell in cs.cells), Fraction(0)) * sign
         if delta == 0:
             continue

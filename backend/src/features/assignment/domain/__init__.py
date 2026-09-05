@@ -4,12 +4,14 @@ Web 層から独立した純粋関数として実装する。外部に公開す�
 アルゴリズム関数をここで再エクスポートする。
 """
 
+# check_strategy_proofness は意図的に再エクスポートしない。全ての虚偽申告を列挙して
+# メカニズムを再実行するためコストが極端に大きく、テストからの利用のみを想定している
+# （必要な場合は checks モジュールから直接 import する）。
 from .checks import (
     CheckResult,
     check_envy_free,
     check_equal_treatment,
     check_ordinal_efficiency,
-    check_strategy_proofness,
 )
 from .constraints import (
     ConstraintSet,
@@ -27,9 +29,11 @@ from .events import AssignmentEvent, AssignmentEventType, reconstruct_expected_a
 from .lottery import (
     MAX_LOTTERY_TERMS,
     DecompositionError,
+    LotteryPlan,
     LotteryTooLargeError,
     decompose,
     ensure_decomposable,
+    plan_lottery,
     reconstruct,
     sample_pure_assignment,
     verify,
@@ -63,6 +67,7 @@ __all__ = [
     "ConstraintStructure",
     "DecompositionError",
     "LotteryTooLargeError",
+    "LotteryPlan",
     "LotteryResult",
     "LotteryTerm",
     "UpperConstraint",
@@ -71,7 +76,6 @@ __all__ = [
     "check_envy_free",
     "check_equal_treatment",
     "check_ordinal_efficiency",
-    "check_strategy_proofness",
     "column_set",
     "crosses",
     "decompose",
@@ -79,6 +83,7 @@ __all__ = [
     "find_bihierarchy",
     "find_odd_cycle",
     "is_hierarchy",
+    "plan_lottery",
     "probabilistic_serial",
     "quota_violations",
     "reconstruct",

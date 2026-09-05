@@ -155,6 +155,14 @@ export default defineConfig([
     },
   },
   {
+    // features/export-assignment-result は pages/assignment からのみ参照されるが、
+    // features/export-result と同様に独立フィーチャーとして意図的に分離している。
+    files: ["src/features/export-assignment-result/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
+  {
     // features/run-assignment は現時点では pages/assignment からのみ参照されるが、
     // features/run-matching と同様、他スライスからの再利用を想定した独立フィーチャーとして
     // 意図的に分離している。
