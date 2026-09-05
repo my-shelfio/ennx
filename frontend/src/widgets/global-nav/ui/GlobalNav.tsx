@@ -7,7 +7,8 @@ import { isMenuItemActive, MENU_ITEMS } from "../model/menuItems";
 
 /**
  * グローバルナビ。ハンバーガーボタンとドロワーメニュー本体をまとめて提供する。
- * 将来の複数モジュール化（情報共有・インセンティブ設計）に備え、全画面幅で同一の
+ * 複数モジュール構成（配属マッチング・割り当て・投票・合意形成、および今後追加する
+ * モジュール）に対応するため、全画面幅で同一の
  * ハンバーガー＋ドロワー方式に統一する（ハンバーガーナビゲーション導入 実行計画）。
  * ページ遷移時はドロワーを自動的に閉じる（副作用ではなくレンダー中の状態調整で行う。
  * https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes）。

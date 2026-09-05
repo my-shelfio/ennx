@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { ROUTES, SAMPLE_QUERY } from "../../../shared/config";
+import { ROUTES, withSampleQuery } from "../../../shared/config";
 import { ModuleIntro } from "../../../widgets/module-intro";
 
 import { AlgorithmSection } from "./AlgorithmSection";
@@ -58,7 +58,7 @@ export function MatchingIntroPage() {
         { label: "マッチングを始める", to: ROUTES.matching.setup },
         {
           label: "サンプルデータで試す",
-          to: `${ROUTES.matching.setup}${SAMPLE_QUERY}`,
+          to: withSampleQuery(ROUTES.matching.setup),
           variant: "outline",
         },
       ]}

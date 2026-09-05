@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { ROUTES, SAMPLE_QUERY } from "../../../shared/config";
+import { ROUTES, withSampleQuery } from "../../../shared/config";
 import { ModuleIntro } from "../../../widgets/module-intro";
 
 /**
@@ -51,7 +51,7 @@ export function AssignmentIntroPage() {
         { label: "割り当てを始める", to: ROUTES.assignment.run },
         {
           label: "サンプルデータで試す",
-          to: `${ROUTES.assignment.run}${SAMPLE_QUERY}`,
+          to: withSampleQuery(ROUTES.assignment.run),
           variant: "outline",
         },
       ]}

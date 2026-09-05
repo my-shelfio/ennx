@@ -42,10 +42,22 @@ export function buildVotingManageUrl(token: string): string {
 }
 
 /**
- * サンプルデータを読み込んだ状態で実行画面に入るためのクエリ。
- * 導入ページの「サンプルデータで試す」CTA から使う。
+ * サンプルデータを読み込んだ状態で実行画面に入ることを示すクエリパラメータ。
+ * URL を組み立てる導入ページ側と、値を解釈する実行画面側の双方がこの定数を使う。
  */
-export const SAMPLE_QUERY = "?sample=1";
+export const SAMPLE_PARAM = "sample";
+
+/** `SAMPLE_PARAM` がこの値のとき、実行画面はマウント時にサンプルを読み込む。 */
+export const SAMPLE_VALUE = "1";
+
+/**
+ * 実行画面のパスにサンプル読み込みのクエリを付与する。
+ * 既にクエリを持つパスにも正しく連結できるよう、区切り文字を判定する。
+ */
+export function withSampleQuery(path: string): string {
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}${SAMPLE_PARAM}=${SAMPLE_VALUE}`;
+}
 
 /**
  * 旧 URL（/matching/ 配下への移設前のパス）。

@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAssignmentInputStore, useAssignmentResultStore } from "../../../entities/assignment";
 import { ExportAssignmentMenu } from "../../../features/export-assignment-result";
 import { useAssignmentSample, useRunAssignment } from "../../../features/run-assignment";
+import { SAMPLE_PARAM, SAMPLE_VALUE } from "../../../shared/config";
 import { useToast } from "../../../shared/ui";
 import { AssignmentForm } from "../../../widgets/assignment-form";
 import { AssignmentResultPanel } from "../../../widgets/assignment-result";
@@ -23,7 +24,7 @@ import { AssignmentStepPlayer } from "../../../widgets/assignment-step-player";
  */
 export function AssignmentPage() {
   const [searchParams] = useSearchParams();
-  const isSample = searchParams.get("sample") === "1";
+  const isSample = searchParams.get(SAMPLE_PARAM) === SAMPLE_VALUE;
   const { input, setInput, replaceInput } = useAssignmentInputStore();
   const { result, setResult, clear } = useAssignmentResultStore();
   const run = useRunAssignment();

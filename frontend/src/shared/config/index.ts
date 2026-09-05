@@ -3,5 +3,7 @@ export {
   buildVotingParticipateUrl,
   LEGACY_ROUTES,
   ROUTES,
-  SAMPLE_QUERY,
+  SAMPLE_PARAM,
+  SAMPLE_VALUE,
+  withSampleQuery,
 } from "./routes";
