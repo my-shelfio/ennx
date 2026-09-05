@@ -47,8 +47,11 @@ dev = [
     "hypothesis>=6",
     # 層依存契約の機械的検証。CI・pre-commit で lint-imports を実行する。
     "import-linter>=2",
-    # FastAPI TestClient の実行時依存（API テスト用）。
-    "httpx>=0.27",
+    # FastAPI TestClient の実行時依存（API テスト用）。starlette の testclient は
+    # httpx2 を優先し、httpx にフォールバックした場合は非推奨警告を出す。将来
+    # フォールバックが外れると TestClient を使う API テストが一斉に落ちるため、
+    # httpx ではなく httpx2 を採用する。
+    "httpx2>=2.12.0",
 ]
 
 # --- Lint / Format（ruff） ---
