@@ -181,11 +181,19 @@ def run_mechanism(data: AssignmentInput, seed: int | None = None) -> LotteryResu
     )
 
 
+# 判定が一部にとどまる場合に添える注記（追加制約があるときの順序効率性）。
+_PARTIAL_NOTE = (
+    "なお、追加の制約があるため、確率を融通し合う改善の余地までは自動判定していません"
+    "（拡張された PS が制約付きの順序効率性を保証することは理論上の結果です）。"
+)
+
+
 def _status_item(label: str, check: checks.CheckResult, ok_detail: str) -> ReportItem:
     """性質検証の結果を性質レポートの 1 項目へ変換する。"""
-    if check.passed:
-        return ReportItem(label=label, status="ok", detail=ok_detail)
-    return ReportItem(label=label, status="ng", detail="／".join(check.violations))
+    if not check.passed:
+        return ReportItem(label=label, status="ng", detail="／".join(check.violations))
+    detail = f"{ok_detail}{_PARTIAL_NOTE}" if check.partial else ok_detail
+    return ReportItem(label=label, status="ok", detail=detail)
 
 
 def build_report(data: AssignmentInput, result: AssignmentResult) -> list[ReportItem]:
@@ -204,12 +212,13 @@ def build_report(data: AssignmentInput, result: AssignmentResult) -> list[Report
         _status_item(
             "無羨望性",
             checks.check_envy_free(data, matrix),
-            "自分の配分より他人の配分を好む社員はいません。",
+            "他の社員の配分を正当に羨む社員はいません。",
         ),
         _status_item(
             "水平性",
             checks.check_equal_treatment(data, matrix),
-            "同じ希望順位を出した社員は同じ確率で配分されています。",
+            "同値な社員（希望順位が同じで、入れ替えても制約が変わらない社員）は"
+            "同じ確率で配分されています。",
         ),
     ]
 
