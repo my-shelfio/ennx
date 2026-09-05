@@ -112,6 +112,74 @@ def _build_index(structure: ConstraintStructure) -> _SetIndex:
 _MAX_SAMPLE_STEPS = 100_000
 
 
+@dataclass(frozen=True)
+class LotteryPlan:
+    """検証済みの期待割当と制約構造。
+
+    抽選（`sample`）と全列挙（`enumerate_terms`）は同じ前処理を必要とする。
+    入口で毎回検証すると、1 回の実行で同じ検証（行列の形・クォータ充足・
+    bihierarchy 判定）を二度払うことになるため、検証済みの状態をこの型にまとめる。
+    組み立ては `plan_lottery` のみが行い、未検証の状態で作れないようにする。
+    """
+
+    matrix: Matrix
+    _index: _SetIndex
+
+    def sample(self, rng: random.Random) -> list[list[int]]:
+        """純割当を 1 つ抽選する（詳細は `sample_pure_assignment`）。"""
+        current = self.matrix
+        for _ in range(_MAX_SAMPLE_STEPS):
+            direction = _find_direction(current, self._index)
+            if direction is None:
+                return [[int(value) for value in row] for row in current]
+
+            alpha = _max_step(current, self._index, direction, 1)
+            beta = _max_step(current, self._index, direction, -1)
+            if alpha == 0 and beta == 0:
+                raise DecompositionError(
+                    "移動可能な方向が見つかりませんでした（制約構造を確認してください）"
+                )
+            gamma = beta / (alpha + beta)
+            current = (
+                _shift(current, direction, alpha)
+                if _draw_below(rng, gamma)
+                else _shift(current, direction, -beta)
+            )
+        raise DecompositionError("抽選が終了しませんでした（制約構造を確認してください）")
+
+    def enumerate_terms(self) -> list[LotteryTerm]:
+        """くじの全項を列挙する（詳細は `decompose`）。"""
+        fractional = sum(1 for row in self.matrix for value in row if value.denominator != 1)
+        if fractional > MAX_FULL_ENUMERATION_CELLS:
+            raise LotteryTooLargeError(
+                f"分数の成分が {fractional} 個あり、くじの全列挙は現実的ではありません"
+            )
+        terms: list[LotteryTerm] = []
+        _decompose(self.matrix, self._index, Fraction(1), terms)
+        return _merge(terms)
+
+
+def plan_lottery(matrix: Matrix, structure: ConstraintStructure) -> LotteryPlan:
+    """期待割当と制約構造を検証し、抽選・全列挙に使える形にまとめて返す。
+
+    1 回の実行で抽選と全列挙の両方を行う場合は、本関数で 1 度だけ検証してから
+    `LotteryPlan` のメソッドを呼ぶ（`decompose` / `sample_pure_assignment` を
+    続けて呼ぶと同じ検証を二度実行することになる）。
+
+    Args:
+        matrix: 期待割当行列（n_agents 行 × n_columns 列）。
+        structure: 制約構造（単集合制約を含むこと）。
+
+    Raises:
+        DecompositionError: 期待割当の形が制約構造と合わない、クォータを満たさない、
+            または制約構造が bihierarchy でない場合。
+    """
+    _ensure_shape(matrix, structure)
+    _ensure_quotas(matrix, structure)
+    ensure_decomposable(structure)
+    return LotteryPlan(matrix=matrix, _index=_build_index(structure))
+
+
 def decompose(matrix: Matrix, structure: ConstraintStructure) -> list[LotteryTerm]:
     """期待割当を、制約を満たす純割当のくじに分解する。
 
@@ -127,24 +195,7 @@ def decompose(matrix: Matrix, structure: ConstraintStructure) -> list[LotteryTer
             bihierarchy でない場合。
         LotteryTooLargeError: 項数が上限を超えた場合。
     """
-    if len(matrix) != structure.n_agents or any(len(r) != structure.n_columns for r in matrix):
-        raise DecompositionError("期待割当行列の形が制約構造と一致しません")
-
-    violations = quota_violations(matrix, structure)
-    if violations:
-        raise DecompositionError("期待割当が制約を満たしていません: " + " / ".join(violations))
-
-    ensure_decomposable(structure)
-
-    fractional = sum(1 for row in matrix for value in row if value.denominator != 1)
-    if fractional > MAX_FULL_ENUMERATION_CELLS:
-        raise LotteryTooLargeError(
-            f"分数の成分が {fractional} 個あり、くじの全列挙は現実的ではありません"
-        )
-
-    terms: list[LotteryTerm] = []
-    _decompose(matrix, _build_index(structure), Fraction(1), terms)
-    return _merge(terms)
+    return plan_lottery(matrix, structure).enumerate_terms()
 
 
 def ensure_decomposable(structure: ConstraintStructure) -> None:
@@ -215,30 +266,7 @@ def sample_pure_assignment(
         DecompositionError: 期待割当がクォータを満たさない、制約構造が
             bihierarchy でない、または分岐が上限回数を超えた場合。
     """
-    _ensure_shape(matrix, structure)
-    _ensure_quotas(matrix, structure)
-    ensure_decomposable(structure)
-
-    index = _build_index(structure)
-    current = matrix
-    for _ in range(_MAX_SAMPLE_STEPS):
-        direction = _find_direction(current, index)
-        if direction is None:
-            return [[int(value) for value in row] for row in current]
-
-        alpha = _max_step(current, index, direction, 1)
-        beta = _max_step(current, index, direction, -1)
-        if alpha == 0 and beta == 0:
-            raise DecompositionError(
-                "移動可能な方向が見つかりませんでした（制約構造を確認してください）"
-            )
-        gamma = beta / (alpha + beta)
-        current = (
-            _shift(current, direction, alpha)
-            if _draw_below(rng, gamma)
-            else _shift(current, direction, -beta)
-        )
-    raise DecompositionError("抽選が終了しませんでした（制約構造を確認してください）")
+    return plan_lottery(matrix, structure).sample(rng)
 
 
 def _draw_below(rng: random.Random, threshold: Fraction) -> bool:

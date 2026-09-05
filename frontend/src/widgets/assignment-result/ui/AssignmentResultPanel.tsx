@@ -16,6 +16,10 @@ import { LotteryList } from "./LotteryList";
 
 interface AssignmentResultPanelProps {
   result: AssignmentResult;
+  /** 新しいシードで引き直す。 */
+  onRedraw?: (() => void) | undefined;
+  /** シードを指定して再現する。 */
+  onReproduce?: ((seed: number) => void) | undefined;
 }
 
 /**
@@ -24,7 +28,11 @@ interface AssignmentResultPanelProps {
  * 「期待割当（どのくらいの確率で配属されるか）→ くじ（実際にどう配るか）→
  * 性質レポート（この結果が何を保証するか）」の順に並べ、説明に使える形にする。
  */
-export function AssignmentResultPanel({ result }: AssignmentResultPanelProps) {
+export function AssignmentResultPanel({
+  result,
+  onRedraw,
+  onReproduce,
+}: AssignmentResultPanelProps) {
   const headcounts = expectedHeadcounts(result);
   const unassigned = expectedUnassigned(result);
 
@@ -58,7 +66,13 @@ export function AssignmentResultPanel({ result }: AssignmentResultPanelProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <DrawnAssignment result={result} />
+          {/* シードが変わったら入力欄を今回の値に戻すため、key で作り直す。 */}
+          <DrawnAssignment
+            key={result.seed}
+            result={result}
+            onRedraw={onRedraw}
+            onReproduce={onReproduce}
+          />
         </CardContent>
       </Card>
 
