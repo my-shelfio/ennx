@@ -1,54 +1,22 @@
-import { Link } from "react-router-dom";
-
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../../shared/ui";
-import { ROUTES } from "../../../shared/config";
+import { Button } from "../../../shared/ui";
 
 import { ColdStartNotice } from "./ColdStartNotice";
-import { DemoSection } from "./DemoSection";
 import { FaqSection } from "./FaqSection";
 import { FeatureOverviewSection } from "./FeatureOverviewSection";
+import { ProblemSection } from "./ProblemSection";
 import { RoadmapSection } from "./RoadmapSection";
 
-interface AlgorithmCard {
-  code: string;
-  name: string;
-  description: string;
-}
+const HIGHLIGHTS = ["登録不要", "インストール不要", "無料"] as const;
 
-// アルゴリズムの説明は開発ルールの定義に基づく。
-const ALGORITHM_CARDS: readonly AlgorithmCard[] = [
-  {
-    code: "DA",
-    name: "受入保留方式（Deferred Acceptance）",
-    description:
-      "定員制約のもとで、提案者にとって最適な安定マッチングを実現する基本アルゴリズム。",
-  },
-  {
-    code: "FDA",
-    name: "柔軟な受入保留方式（Flexible DA）",
-    description:
-      "地域ごとの受け入れ上限を考慮した配属（研修医マッチング等）。地域上限を守りながら効率的に配属する。",
-  },
-  {
-    code: "CA",
-    name: "カットオフ調整（Cutoff Adjustment）",
-    description:
-      "予算・属性人数などの複合的な上限制約に対応する、提案者最適かつ公平な配属を実現する。",
-  },
-] as const;
+/** 課題セクション（ProblemSection）のアンカー。ヒーローの CTA からページ内スクロールする。 */
+const PROBLEMS_ANCHOR = "#problems";
 
 /**
  * ホーム画面。
- * ヒーローセクション（グラデーション + CTA）、「今使える機能」（配属マッチング・
- * 投票を対等に提示）、デモセクション、アルゴリズム 3 種の機能カード、
- * 「今後の展開」（検討中テーマの予告）、FAQ セクションで構成する。
+ * アプリ全体の位置付け（何ができるか・どんな課題を解決するか）を伝える場とし、
+ * モジュール固有の説明は各モジュールの導入ページに置く。
+ * ヒーローセクション（モジュール中立の CTA 1 件）、「どんな課題を解決するか」、
+ * 「今使える機能」（3 モジュールを対等なカードで提示）、「今後の展開」、FAQ で構成する。
  */
 export function HomePage() {
   return (
@@ -62,45 +30,26 @@ export function HomePage() {
             ennx は組織の問題を経済学の理論で可視化し、意思決定を支援します。配属マッチングや
             投票・合意形成など、理論に基づくツールをブラウザだけで実行・可視化できます。
           </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button asChild variant="secondary" size="lg">
-              <Link to={ROUTES.matching.setup}>マッチングを始める</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link to={`${ROUTES.matching.setup}?sample=1`}>サンプルデータで試す</Link>
-            </Button>
-          </div>
+          <ul className="flex flex-wrap justify-center gap-2">
+            {HIGHLIGHTS.map((highlight) => (
+              <li
+                key={highlight}
+                className="rounded-pill bg-white/15 px-3 py-1 text-xs font-semibold text-white"
+              >
+                {highlight}
+              </li>
+            ))}
+          </ul>
+          <Button asChild variant="secondary" size="lg">
+            <a href={PROBLEMS_ANCHOR}>解決できる課題を見る</a>
+          </Button>
           <ColdStartNotice />
         </div>
       </section>
 
+      <ProblemSection />
+
       <FeatureOverviewSection />
-
-      <DemoSection />
-
-      <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
-        <h2 className="text-center text-2xl font-bold text-slate-900">
-          3 種類のマッチングアルゴリズム
-        </h2>
-        <p className="mt-2 text-center text-sm text-slate-500">
-          制約の種類に応じて、理論的に性質が保証されたアルゴリズムを選択できます。
-        </p>
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {ALGORITHM_CARDS.map((algorithm) => (
-            <Card key={algorithm.code}>
-              <CardHeader>
-                <span className="w-fit rounded-pill bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
-                  {algorithm.code}
-                </span>
-                <CardTitle>{algorithm.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{algorithm.description}</CardDescription>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
 
       <RoadmapSection />
 
