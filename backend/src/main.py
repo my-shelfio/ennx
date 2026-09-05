@@ -20,6 +20,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from api.v1.router import router as api_v1_router
+from features.assignment.presentation.errors import register_assignment_error_handlers
 from features.matching.presentation.errors import register_matching_error_handlers
 from features.voting.presentation.errors import register_voting_error_handlers
 from features.voting.presentation.router import get_voting_repository
@@ -35,13 +36,14 @@ def create_app() -> FastAPI:
     """FastAPI アプリケーションを生成する。"""
     app = FastAPI(
         title="ennx API",
-        description="社員と部署双方の希望を反映した配属マッチング API",
+        description="組織の配属・配分を経済学の理論で可視化する API",
     )
     add_security_headers(app)
     app.include_router(health_router)
     app.include_router(api_v1_router)
     _wire_voting_repository(app)
     register_request_validation_handler(app)
+    register_assignment_error_handlers(app)
     register_matching_error_handlers(app)
     register_voting_error_handlers(app)
 

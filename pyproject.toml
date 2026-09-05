@@ -85,9 +85,10 @@ root_packages = ["api", "features", "shared"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
-name = "features は互いに独立している（matching ⇔ voting）"
+name = "features は互いに独立している（assignment ⇔ matching ⇔ voting）"
 type = "independence"
 modules = [
+    "features.assignment",
     "features.matching",
     "features.voting",
 ]
@@ -101,6 +102,7 @@ layers = [
     "domain",
 ]
 containers = [
+    "features.assignment",
     "features.matching",
     "features.voting",
 ]
@@ -109,6 +111,7 @@ containers = [
 name = "application 層は Web フレームワークに依存しない"
 type = "forbidden"
 source_modules = [
+    "features.assignment.application",
     "features.matching.application",
     "features.voting.application",
     "shared.application",
@@ -137,6 +140,9 @@ name = "api は各 feature の presentation 層のみに直接依存する"
 type = "forbidden"
 source_modules = ["api"]
 forbidden_modules = [
+    "features.assignment.domain",
+    "features.assignment.application",
+    "features.assignment.infrastructure",
     "features.matching.domain",
     "features.matching.application",
     "features.matching.infrastructure",

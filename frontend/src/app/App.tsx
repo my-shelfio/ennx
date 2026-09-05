@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 
+import { AssignmentPage } from "../pages/assignment";
 import { HomePage } from "../pages/home";
 import { PreferencesPage } from "../pages/preferences";
 import { ResultPage } from "../pages/result";
@@ -28,6 +29,7 @@ function LegacyRedirect({ to }: { to: string }) {
  * "/matching/setup" は設定ウィザード、"/matching/preferences" は選好行列エディタ、
  * "/matching/result" は結果画面。旧パス（LEGACY_ROUTES）はブックマーク・共有リンクの
  * 互換性を保つため恒久的にリダイレクトする（未定義パスは "*" でホームへフォールバックする）。
+ * 割り当て（PS メカニズム）は "/assignment" に置く。
  * 投票・合意形成モジュールは "/voting/" 配下に名前空間化する。
  * "/voting/create" は作成、"/voting/v/:token" は参加、"/voting/m/:token" は管理（結果確認・削除）。
  */
@@ -41,6 +43,7 @@ export function App() {
             <Route path={ROUTES.matching.setup} element={<SetupWizardPage />} />
             <Route path={ROUTES.matching.preferences} element={<PreferencesPage />} />
             <Route path={ROUTES.matching.result} element={<ResultPage />} />
+            <Route path={ROUTES.assignment.root} element={<AssignmentPage />} />
             <Route path={ROUTES.voting.create} element={<VotingCreatePage />} />
             <Route path={ROUTES.voting.participate} element={<VotingParticipatePage />} />
             <Route path={ROUTES.voting.manage} element={<VotingManagePage />} />

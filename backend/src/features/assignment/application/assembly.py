@@ -1,0 +1,291 @@
+"""割り当て入力の組み立て・実行・性質レポート生成。
+
+RunAssignment / ValidateAssignmentInput の両ユースケースが共用する。検証は
+三段構え:
+    1. 構造検証: 制約種別の有効性・パラメータの形式をフィールド名付きで返す
+    2. ドメイン検証: 入力モデルの `__post_init__`（ValueError）を変換する
+    3. 分解可能性の検証: 制約構造が bihierarchy でなければ実行前に弾く
+       （交差する制約の下では期待割当をくじに分解できないため）
+"""
+
+from __future__ import annotations
+
+import random
+from fractions import Fraction
+
+from features.assignment.application.constraints import get_constraint_spec, is_valid_constraint
+from features.assignment.application.dto.requests import AssignmentRequest
+from features.assignment.application.errors import InvalidAssignmentInputError
+from features.assignment.application.meta import (
+    CONSTRAINT_TYPE_KEYS,
+    allows_extra_constraints,
+    is_valid_constraint_type,
+)
+from features.assignment.domain import checks
+from features.assignment.domain.constraints import build_constraint_structure
+from features.assignment.domain.lottery import (
+    DecompositionError,
+    LotteryTooLargeError,
+    decompose,
+    ensure_decomposable,
+    sample_pure_assignment,
+)
+from features.assignment.domain.models import (
+    AssignmentInput,
+    AssignmentResult,
+    LotteryResult,
+    UpperConstraint,
+)
+from features.assignment.domain.ps import probabilistic_serial
+from shared.application.errors import FieldError
+from shared.domain.report import ReportItem
+
+
+def resolve_names(request: AssignmentRequest) -> tuple[list[str], list[str]]:
+    """社員・部署の表示名を確定する（省略時は「社員1」「部署1」〜を自動生成）。"""
+    emp_names = request.employee_names or [f"社員{i + 1}" for i in range(request.num_employees)]
+    dep_names = request.department_names or [f"部署{j + 1}" for j in range(request.num_departments)]
+    return emp_names, dep_names
+
+
+def validate_structure(request: AssignmentRequest) -> list[FieldError]:
+    """ドメインモデル構築前の構造検証（フィールド名付きエラーを返す）。"""
+    if not is_valid_constraint_type(request.constraint_type):
+        return [
+            FieldError(
+                field="constraint_type",
+                message=(
+                    f"制約種別「{request.constraint_type}」は指定できません"
+                    f"（{' / '.join(CONSTRAINT_TYPE_KEYS)} から選択してください）"
+                ),
+            )
+        ]
+
+    errors: list[FieldError] = []
+    entries = request.constraints or []
+    if entries and not allows_extra_constraints(request.constraint_type):
+        errors.append(
+            FieldError(
+                field="constraints",
+                message="追加の制約は制約種別 general でのみ指定できます",
+            )
+        )
+        return errors
+
+    for index, entry in enumerate(entries):
+        field = f"constraints[{index}]"
+        if not is_valid_constraint(entry.type):
+            errors.append(FieldError(field=field, message=f"制約「{entry.type}」は指定できません"))
+            continue
+        spec = get_constraint_spec(entry.type)
+        errors.extend(
+            spec.validate_params(
+                entry.params, request.num_employees, request.num_departments, field
+            )
+        )
+    return errors
+
+
+def build_upper_constraints(request: AssignmentRequest) -> list[UpperConstraint]:
+    """追加の上限制約をドメインモデルへ変換する（構造検証済みの入力を前提とする）。"""
+    _, dep_names = resolve_names(request)
+    constraints: list[UpperConstraint] = []
+    if not allows_extra_constraints(request.constraint_type):
+        return constraints
+    for entry in request.constraints or []:
+        spec = get_constraint_spec(entry.type)
+        constraints.extend(
+            spec.build_constraints(
+                entry.params, request.num_employees, request.num_departments, dep_names
+            )
+        )
+    return constraints
+
+
+def build_domain_input(request: AssignmentRequest) -> AssignmentInput:
+    """リクエスト DTO からドメイン入力モデルを組み立て、分解可能性まで検証する。
+
+    Raises:
+        InvalidAssignmentInputError: 構造検証・ドメイン検証・分解可能性の検証で
+            エラーが見つかった場合。
+    """
+    errors = validate_structure(request)
+    if errors:
+        raise InvalidAssignmentInputError(errors)
+
+    emp_names, dep_names = resolve_names(request)
+    try:
+        data = AssignmentInput(
+            agent_prefs=request.agent_prefs,
+            capacities=request.capacities,
+            constraints=build_upper_constraints(request),
+            agent_names=emp_names,
+            object_names=dep_names,
+        )
+    except ValueError as exc:
+        raise InvalidAssignmentInputError([FieldError(field=None, message=str(exc))]) from exc
+
+    try:
+        ensure_decomposable(build_constraint_structure(data))
+    except DecompositionError as exc:
+        raise InvalidAssignmentInputError(
+            [FieldError(field="constraints", message=str(exc))]
+        ) from exc
+    return data
+
+
+def run_mechanism(data: AssignmentInput, seed: int | None = None) -> LotteryResult:
+    """PS を実行し、期待割当を確定的な配属のくじにして返す。
+
+    くじは常に「1 回引いた結果」を返す。全項の列挙は項数が最悪
+    2^(制約集合数) になり実用規模では現実的でないため、上限内に収まった場合に
+    限って全項を添える（terms_complete=True）。上限を超えた場合は抽選結果だけを
+    返し、エラーにはしない。
+
+    Args:
+        data: 割り当て問題の入力。
+        seed: 抽選に使う乱数シード。省略時はその都度生成する。返り値に含めるため、
+            同じ入力・同じシードで再実行すれば同じ抽選結果を再現できる。
+
+    Raises:
+        InvalidAssignmentInputError: 抽選そのものが成立しない場合
+            （クォータ違反・bihierarchy でない制約構造）。
+    """
+    result = probabilistic_serial(data)
+    structure = build_constraint_structure(data)
+    resolved_seed = random.randrange(2**32) if seed is None else seed
+
+    try:
+        drawn = sample_pure_assignment(
+            result.expected_assignment, structure, random.Random(resolved_seed)
+        )
+    except DecompositionError as exc:
+        raise InvalidAssignmentInputError([FieldError(field=None, message=str(exc))]) from exc
+
+    try:
+        terms = decompose(result.expected_assignment, structure)
+        terms_complete = True
+    except LotteryTooLargeError:
+        # 全項は出せないが抽選は成立する。結果画面は抽選結果を主役にして
+        # 「全体像は省略した」ことを伝える。
+        terms = []
+        terms_complete = False
+
+    return LotteryResult(
+        expected_assignment=result.expected_assignment,
+        events=result.events,
+        terms=terms,
+        terms_complete=terms_complete,
+        drawn_assignment=drawn,
+        seed=resolved_seed,
+    )
+
+
+# 判定が一部にとどまる場合に添える注記（追加制約があるときの順序効率性）。
+_PARTIAL_NOTE = (
+    "なお、追加の制約があるため、確率を融通し合う改善の余地までは自動判定していません"
+    "（拡張された PS が制約付きの順序効率性を保証することは理論上の結果です）。"
+)
+
+
+def _status_item(label: str, check: checks.CheckResult, ok_detail: str) -> ReportItem:
+    """性質検証の結果を性質レポートの 1 項目へ変換する。"""
+    if not check.passed:
+        return ReportItem(label=label, status="ng", detail="／".join(check.violations))
+    detail = f"{ok_detail}{_PARTIAL_NOTE}" if check.partial else ok_detail
+    return ReportItem(label=label, status="ok", detail=detail)
+
+
+def build_report(data: AssignmentInput, result: AssignmentResult) -> list[ReportItem]:
+    """PS の性質レポートを組み立てる。
+
+    保証する性質（順序効率性・無羨望性・水平性）は実際の結果に対して検証し、
+    保証しない性質（耐戦略性）は info 項目として明記する。
+    """
+    matrix = result.expected_assignment
+    items = [
+        _status_item(
+            "順序効率性",
+            checks.check_ordinal_efficiency(data, matrix),
+            "確率を融通し合っても全員が得をする配分は存在しません。",
+        ),
+        _status_item(
+            "無羨望性",
+            checks.check_envy_free(data, matrix),
+            "他の社員の配分を正当に羨む社員はいません。",
+        ),
+        _status_item(
+            "水平性",
+            checks.check_equal_treatment(data, matrix),
+            "同値な社員（希望順位が同じで、入れ替えても制約が変わらない社員）は"
+            "同じ確率で配分されています。",
+        ),
+    ]
+
+    over = [
+        f"{data.o_name(j)}: {_total(matrix, j, data.n_agents)} 人 > "
+        f"受け入れ {data.capacities[j]} 人"
+        for j in range(data.n_objects)
+        if _total(matrix, j, data.n_agents) > data.capacities[j]
+    ]
+    if over:
+        items.append(ReportItem(label="受け入れ人数の遵守", status="ng", detail="／".join(over)))
+    else:
+        items.append(
+            ReportItem(
+                label="受け入れ人数の遵守",
+                status="ok",
+                detail="すべての部署が受け入れ人数以内です。",
+            )
+        )
+
+    if data.constraints:
+        violated = [
+            constraint.display_label()
+            for constraint in data.constraints
+            if sum((matrix[i][j] for (i, j) in constraint.cells), Fraction(0)) > constraint.upper
+        ]
+        if violated:
+            items.append(
+                ReportItem(
+                    label="追加制約の充足", status="ng", detail="制約違反: " + "、".join(violated)
+                )
+            )
+        else:
+            items.append(
+                ReportItem(
+                    label="追加制約の充足",
+                    status="ok",
+                    detail=f"指定した {len(data.constraints)} 件の制約をすべて満たしています。",
+                )
+            )
+
+    if isinstance(result, LotteryResult):
+        detail = (
+            f"期待割当を {len(result.terms)} 通りの確定的な配属に分解し、そこから 1 通りを"
+            "抽選しました。どの配属を引いても受け入れ人数と追加制約を満たします。"
+            if result.terms_complete
+            else (
+                "期待割当から確定的な配属を 1 通り抽選しました。組み合わせが多いため"
+                "くじの全体像（全パターンとその確率）は省略していますが、抽選結果は"
+                "受け入れ人数と追加制約を満たします。"
+            )
+        )
+        items.append(ReportItem(label="くじへの分解", status="ok", detail=detail))
+
+    items.append(
+        ReportItem(
+            label="耐戦略性",
+            status="info",
+            detail=(
+                "PS は耐戦略性を保証しません。希望順位を偽ることで得をする社員が"
+                "存在しうるため、申告内容の扱いには注意してください。"
+            ),
+        )
+    )
+    return items
+
+
+def _total(matrix: list[list[Fraction]], column: int, n_agents: int) -> Fraction:
+    """期待割当行列の列合計（配属される人数の期待値）を返す。"""
+    return sum((matrix[i][column] for i in range(n_agents)), Fraction(0))

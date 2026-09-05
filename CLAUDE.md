@@ -12,7 +12,8 @@ ennx: 企業の問題を経済学を応用して可視化する Web アプリ（
   API 型は OpenAPI から openapi-typescript で自動生成
 - 単一サービス構成で uvicorn が API・SPA を配信する
 - 投票（voting）機能のみ保存基盤に Neon PostgreSQL（SQLAlchemy Core + psycopg）を使う。
-  環境変数 `DATABASE_URL` 未設定時は投票 API が 503 を返す（マッチング API はステートレスを維持）
+  環境変数 `DATABASE_URL` 未設定時は投票 API が 503 を返す
+  （マッチング・割り当ての API はステートレスを維持）
 - パッケージ管理: uv（Python。`uv sync` で開発環境構築、依存追加は `uv add`）/
   npm（frontend。`npm ci` で再現インストール）
 - lint/format: ruff・eslint（+ eslint-plugin-boundaries）・steiger、型: mypy **strict**・tsc、
@@ -21,18 +22,19 @@ ennx: 企業の問題を経済学を応用して可視化する Web アプリ（
 
 ## ディレクトリ構成
 
-| パス                                    | 内容                                                                                                                                                                                          |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `backend/src/`                          | FastAPI アプリ。`api/`（バージョン集約）+ `features/`（機能単位）+ `shared/`（機能横断）構成                                                                                                  |
-| `backend/src/api/v1/`                   | API バージョン集約層。feature ごとの presentation ルータを `/api/v1` prefix で集約する。v2 追加時は `api/v2/` を新設し、変更のない feature は v1 ルータを再利用する                           |
-| `backend/src/features/<feature>/`       | 機能単位（matching・voting）。内部に `domain / application / presentation / infrastructure` の4層を持つ。presentation 層のルータはバージョン非依存（prefix は `/matching`・`/voting` 等のみ） |
-| `backend/src/features/matching/domain/` | マッチングアルゴリズム層。**他層・フレームワークから独立した純粋関数のみ**                                                                                                                    |
-| `backend/src/shared/`                   | feature 横断コード（性質レポートの共通データモデル・エラー基底・エラーハンドラ共通部品・SPA配信・セキュリティヘッダ等）。依存は features → shared の一方向のみ                                |
-| `backend/tests/`                        | バックエンドの pytest テスト（feature ミラー構成。`features/matching/domain/test_properties.py` = プロパティテスト）                                                                          |
-| `frontend/src/`                         | React SPA。FSD 6層（app / pages / widgets / features / entities / shared）                                                                                                                    |
-| `docs/system-spec.md`                   | システム仕様書（技術スタック・画面・API・非機能・インフラの要点）                                                                                                                             |
-| `docs/event-schema.md`                  | イベントログ（ステップログ）の共通スキーマ仕様（API 契約）                                                                                                                                    |
-| `.claude/rules/`                        | 開発ルール（必読）。`.claude/skills/`・`.claude/agents/` = 作業手順とレビュー担当                                                                                                             |
+| パス                                      | 内容                                                                                                                                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `backend/src/`                            | FastAPI アプリ。`api/`（バージョン集約）+ `features/`（機能単位）+ `shared/`（機能横断）構成                                                                                                                             |
+| `backend/src/api/v1/`                     | API バージョン集約層。feature ごとの presentation ルータを `/api/v1` prefix で集約する。v2 追加時は `api/v2/` を新設し、変更のない feature は v1 ルータを再利用する                                                      |
+| `backend/src/features/<feature>/`         | 機能単位（matching・assignment・voting）。内部に `domain / application / presentation / infrastructure` の4層を持つ。presentation 層のルータはバージョン非依存（prefix は `/matching`・`/assignment`・`/voting` 等のみ） |
+| `backend/src/features/matching/domain/`   | マッチング（双方向選好）のアルゴリズム層。DA / FDA / CA。**他層・フレームワークから独立した純粋関数のみ**                                                                                                                |
+| `backend/src/features/assignment/domain/` | 割り当て（片側選好）のアルゴリズム層。PS ＋ 一般化 BvN 分解。同じく純粋関数のみ                                                                                                                                          |
+| `backend/src/shared/`                     | feature 横断コード（性質レポートの共通データモデル・エラー基底・エラーハンドラ共通部品・SPA配信・セキュリティヘッダ等）。依存は features → shared の一方向のみ                                                           |
+| `backend/tests/`                          | バックエンドの pytest テスト（feature ミラー構成。`features/*/domain/test_*properties.py` = プロパティテスト）                                                                                                           |
+| `frontend/src/`                           | React SPA。FSD 6層（app / pages / widgets / features / entities / shared）                                                                                                                                               |
+| `docs/system-spec.md`                     | システム仕様書（技術スタック・画面・API・非機能・インフラの要点）                                                                                                                                                        |
+| `docs/event-schema.md`                    | イベントログ（ステップログ）のスキーマ仕様（API 契約）。matching・assignment で別スキーマ                                                                                                                                |
+| `.claude/rules/`                          | 開発ルール（必読）。`.claude/skills/`・`.claude/agents/` = 作業手順とレビュー担当                                                                                                                                        |
 
 ## 品質ゲート（コマンドの正本）
 
@@ -67,18 +69,29 @@ npm run build
 
 ## アルゴリズム層の設計原則
 
-アルゴリズム層は `backend/src/features/matching/domain/`。
+アルゴリズム層は `backend/src/features/matching/domain/`（双方向選好のマッチング。
+DA / FDA / CA）と `backend/src/features/assignment/domain/`（片側選好の割り当て。
+PS ＋ 一般化 BvN 分解）の 2 つ。**両者はデータモデルを共有せず、別 feature として独立させる**
+（マッチングは両側が相手を順位づけして確定的な結果を返すのに対し、割り当ては片側だけが
+順位づけし結果は確率行列になる。共通の入出力モデルに載せると双方に不要な項目が増える）。
 
-1. **純粋関数**: print / verbose / グローバル状態を持たない。入力 → 結果（+ イベントログ）のみ
-2. **インデックス規約**: 外部入力（選好リスト）は 1-indexed、内部処理と出力は 0-indexed
-   （変換は `models.build_rank`）。`proposer_match[i] = -1` は未マッチ
-3. **共通データモデル**: 入力は `models.py` の `BaseMatchingInput` 派生（frozen dataclass,
-   kw_only）、結果は `MatchingResult` 派生。入力検証は `__post_init__` で ValueError
+1. **純粋関数**: print / verbose / グローバル状態を持たない。入力 → 結果（+ イベントログ）のみ。
+   乱数を使う場合も生成器を引数で受け取り、モジュール内で `random` を直接呼ばない
+2. **インデックス規約**: 外部入力（選好・希望順位リスト）は 1-indexed、内部処理と出力は
+   0-indexed（変換は各 feature の `models.build_rank`）。matching は
+   `proposer_match[i] = -1` が未マッチ、assignment は期待割当行列の最終列が未配属（∅）
+3. **共通データモデル**: 各 feature 内で共通化する。matching は `BaseMatchingInput` 派生と
+   `MatchingResult` 派生、assignment は `AssignmentInput` と `AssignmentResult` 派生
+   （いずれも frozen dataclass, kw_only）。入力検証は `__post_init__` で ValueError
 4. **理論的前提は入力検証で保証**: アルゴリズムが暗黙に仮定する条件（例: FDA の
-   「地域内目標定員合計 ≤ 地域上限」、CA の遺伝性制約）は入力バリデーションに落とす
-5. **イベントログ**: 実行過程は docs/event-schema.md の共通スキーマで `Result.events` に記録し、
-   `reconstruct_matching` で最終結果を再構成できること（テストで保証）
-6. **domain 層は他層・フレームワークに依存しない**: 契約は pyproject.toml の
+   「地域内目標定員合計 ≤ 地域上限」、CA の遺伝性制約、PS ＋ BvN の bihierarchy）は
+   入力バリデーションに落とす
+5. **確率・分数は厳密に扱う**: 割り当ての期待割当・くじの重み・時刻は `fractions.Fraction`
+   で計算し、API では既約分数の文字列で返す。丸めは表示側の責務とする
+6. **イベントログ**: 実行過程は docs/event-schema.md のスキーマで `Result.events` に記録し、
+   イベント列から結果を再構成できること（テストで保証）。スキーマは feature ごとに分ける
+   （matching = ラウンド単位の離散イベント、assignment = 連続時間の区間イベント）
+7. **domain 層は他層・フレームワークに依存しない**: 契約は pyproject.toml の
    [tool.importlinter] に定義し、`lint-imports` で検証する（feature 間の
    独立性、各 feature 内の層依存、shared → features 禁止も同じ仕組みで強制する）
 

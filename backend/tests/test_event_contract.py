@@ -1,27 +1,39 @@
 """イベントログの契約テスト。
 
-docs/event-schema.json（API 契約）に対して、`POST /api/v1/matching/run` の
-レスポンス `events[]` が 3 アルゴリズム（DA / FDA / CA）すべてで適合する
-ことを検証する。あわせて、レスポンスのイベントログだけから最終結果を
-再構成し、配属結果と完全一致することを API 経由で検証する。
+2 つの JSON Schema（API 契約）に対して、run エンドポイントのレスポンス
+`events[]` が適合することを検証する。
 
-検証は標準ライブラリのみで行う（本スキーマが使用する JSON Schema 語彙の
+- docs/event-schema.json: `POST /api/v1/matching/run`（DA / FDA / CA）
+- docs/assignment-event-schema.json: `POST /api/v1/assignment/run`（PS）
+
+あわせて、レスポンスのイベントログだけから最終結果（マッチング／期待割当）を
+再構成し、結果と完全一致することを API 経由で検証する。
+
+検証は標準ライブラリのみで行う（両スキーマが使用する JSON Schema 語彙の
 サブセットを _validate が実装する）。
 """
 
 from __future__ import annotations
 
 import json
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
+from features.assignment.domain.events import (
+    AssignmentEvent,
+    AssignmentEventType,
+    reconstruct_expected_assignment,
+)
 from features.matching.domain.events import EventType, MatchingEvent, reconstruct_matching
 from main import create_app
 
-SCHEMA_PATH = Path(__file__).resolve().parents[2] / "docs" / "event-schema.json"
+DOCS_DIR = Path(__file__).resolve().parents[2] / "docs"
+SCHEMA_PATH = DOCS_DIR / "event-schema.json"
+ASSIGNMENT_SCHEMA_PATH = DOCS_DIR / "assignment-event-schema.json"
 
 # 各アルゴリズム固有のイベントを含む最小入力。
 # DA: 定員 1 に 2 名が競合 → propose / tentative_accept / reject
@@ -53,6 +65,18 @@ REQUEST_BODIES: dict[str, dict[str, Any]] = {
 }
 
 ALGORITHMS = tuple(REQUEST_BODIES.keys())
+
+# 割り当て（PS）で全イベント種別が出現する最小入力。
+# 受け入れ人数 2 の部署に上限 1 の追加制約を課すことで、
+# consume / supply_exhausted / constraint_saturated がすべて発生する。
+ASSIGNMENT_REQUEST_BODY: dict[str, Any] = {
+    "constraint_type": "general",
+    "capacities": [2, 1],
+    "agent_prefs": [[1, 2], [1, 2], [2, 1], [2, 1]],
+    "constraints": [
+        {"type": "group_quota", "params": {"members": [0, 1, 2], "department": 0, "upper": 1}}
+    ],
+}
 
 
 def _check_type(value: object, type_name: str) -> bool:
@@ -143,6 +167,13 @@ def schema() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="module")
+def assignment_schema() -> dict[str, Any]:
+    with ASSIGNMENT_SCHEMA_PATH.open(encoding="utf-8") as f:
+        loaded: dict[str, Any] = json.load(f)
+    return loaded
+
+
+@pytest.fixture(scope="module")
 def client() -> TestClient:
     return TestClient(create_app())
 
@@ -222,3 +253,88 @@ class TestReconstructionViaApi:
         )
         assert proposer_match == result["proposer_match"]
         assert [sorted(m) for m in receiver_match] == [sorted(m) for m in result["receiver_match"]]
+
+
+class TestAssignmentEventSchemaContract:
+    """run レスポンスの events[] が docs/assignment-event-schema.json に適合する。"""
+
+    def test_all_events_conform_to_schema(
+        self, client: TestClient, assignment_schema: dict[str, Any]
+    ) -> None:
+        response = client.post("/api/v1/assignment/run", json=ASSIGNMENT_REQUEST_BODY)
+
+        assert response.status_code == 200
+        events = response.json()["events"]
+        assert events, "イベントログが空です"
+        violations = [v for event in events for v in _validate(event, assignment_schema)]
+        assert violations == [], f"スキーマ違反: {violations}"
+
+    def test_fixture_input_covers_all_event_types(self, client: TestClient) -> None:
+        """フィクスチャ入力で全 3 イベント種別が出現する（スキーマの enum 全網羅）。"""
+        events = client.post("/api/v1/assignment/run", json=ASSIGNMENT_REQUEST_BODY).json()[
+            "events"
+        ]
+
+        observed = {event["event_type"] for event in events}
+        assert observed == {member.value for member in AssignmentEventType}
+
+    def test_schema_rejects_invalid_events(self, assignment_schema: dict[str, Any]) -> None:
+        """スキーマ（と検証器）が不正イベントを検出できることの自己検証。"""
+        valid = {
+            "step": 1,
+            "event_type": "consume",
+            "start": "0",
+            "end": "1/2",
+            "employee": 0,
+            "department": 0,
+            "amount": "1/2",
+            "constraint_index": None,
+            "reason": None,
+        }
+        assert _validate(valid, assignment_schema) == []
+
+        invalid_cases: list[dict[str, Any]] = [
+            {**valid, "event_type": "unknown"},
+            {**valid, "step": 0},
+            {**valid, "employee": None},
+            {**valid, "amount": None},
+            {**valid, "extra": 1},
+            {k: v for k, v in valid.items() if k != "step"},
+            {**valid, "event_type": "constraint_saturated", "department": 0},
+        ]
+        for case in invalid_cases:
+            assert _validate(case, assignment_schema), f"不正イベントが検出されませんでした: {case}"
+
+
+class TestAssignmentReconstructionViaApi:
+    """レスポンスのイベントログから期待割当を再構成できる（API 経由の整合検証）。"""
+
+    def test_events_reconstruct_expected_assignment(self, client: TestClient) -> None:
+        result = client.post("/api/v1/assignment/run", json=ASSIGNMENT_REQUEST_BODY).json()
+        n_agents = len(ASSIGNMENT_REQUEST_BODY["agent_prefs"])
+        n_objects = len(ASSIGNMENT_REQUEST_BODY["capacities"])
+
+        events = [
+            AssignmentEvent(
+                step=e["step"],
+                event_type=AssignmentEventType(e["event_type"]),
+                start=Fraction(e["start"]),
+                end=Fraction(e["end"]),
+                agent=e["employee"],
+                obj=None
+                if e["department"] is None
+                else _internal_column(e["department"], n_objects),
+                amount=None if e["amount"] is None else Fraction(e["amount"]),
+                constraint_index=e["constraint_index"],
+                reason=e.get("reason"),
+            )
+            for e in result["events"]
+        ]
+        matrix = reconstruct_expected_assignment(events, n_agents, n_objects)
+
+        assert [[str(value) for value in row] for row in matrix] == result["expected_assignment"]
+
+
+def _internal_column(department: int, n_objects: int) -> int:
+    """API の部署 index（-1 = 未配属）を内部の列 index に戻す。"""
+    return n_objects if department == -1 else department
