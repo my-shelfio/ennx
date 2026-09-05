@@ -6,7 +6,7 @@ import fsd from "@feature-sliced/steiger-plugin";
 export default defineConfig([
   ...fsd.configs.recommended,
   {
-    files: ["src/entities/matching/**"],
+    files: ["src/entities/matching/**", "src/entities/assignment/**"],
     rules: {
       "fsd/insignificant-slice": "off",
     },
@@ -150,6 +150,28 @@ export default defineConfig([
     // widgets/voting-results-panel は pages/voting-manage からのみ参照されるが、
     // 同様に widgets/pages 分離方針に基づく意図的な設計（#129）。
     files: ["src/widgets/voting-results-panel/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
+  {
+    // features/run-assignment は現時点では pages/assignment からのみ参照されるが、
+    // features/run-matching と同様、他スライスからの再利用を想定した独立フィーチャーとして
+    // 意図的に分離している。
+    files: ["src/features/run-assignment/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
+  {
+    // widgets/assignment-form・assignment-result・assignment-step-player は
+    // pages/assignment からのみ参照されるが、widgets/setup-wizard 等と同様に
+    // widgets/pages 分離方針（pages は合成のみでロジックを持たない）に基づく意図的な設計。
+    files: [
+      "src/widgets/assignment-form/**",
+      "src/widgets/assignment-result/**",
+      "src/widgets/assignment-step-player/**",
+    ],
     rules: {
       "fsd/insignificant-slice": "off",
     },

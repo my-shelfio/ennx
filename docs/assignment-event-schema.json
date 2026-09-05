@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/my-shelfio/ennx/master/docs/assignment-event-schema.json",
+  "title": "AssignmentEvent",
+  "description": "割り当てメカニズム（PS）のイーティング過程を記録するイベント 1 件。docs/event-schema.md の機械可読な正本（API 契約）。POST /api/v1/assignment/run のレスポンス events[] の各要素はこのスキーマに適合する。",
+  "type": "object",
+  "properties": {
+    "step": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "区間番号（1 始まり）。同じ step のイベントは同一の時刻区間に属する。"
+    },
+    "event_type": {
+      "enum": ["consume", "supply_exhausted", "constraint_saturated"],
+      "description": "イベント種別。"
+    },
+    "start": {
+      "type": "string",
+      "description": "区間の開始時刻。既約分数の文字列（例: \"1/2\"、\"0\"、\"1\"）。"
+    },
+    "end": {
+      "type": "string",
+      "description": "区間の終了時刻。既約分数の文字列。"
+    },
+    "employee": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "対象の社員（0-indexed）。consume 以外は null。"
+    },
+    "department": {
+      "type": ["integer", "null"],
+      "minimum": -1,
+      "description": "対象の部署（0-indexed）。-1 は未配属（∅）。constraint_saturated は null。"
+    },
+    "amount": {
+      "type": ["string", "null"],
+      "description": "区間で消費した量。既約分数の文字列。consume 以外は null。"
+    },
+    "constraint_index": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "飽和した上限制約の 0-index。constraint_saturated 以外は null。"
+    },
+    "reason": {
+      "type": ["string", "null"],
+      "description": "補足説明。省略可。"
+    }
+  },
+  "required": ["step", "event_type", "start", "end"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "event_type": { "const": "consume" } }
+      },
+      "then": {
+        "properties": {
+          "employee": { "type": "integer" },
+          "department": { "type": "integer" },
+          "amount": { "type": "string" },
+          "constraint_index": { "type": "null" }
+        }
+      },
+      "else": {
+        "properties": {
+          "employee": { "type": "null" },
+          "amount": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "event_type": { "const": "constraint_saturated" } }
+      },
+      "then": {
+        "properties": {
+          "department": { "type": "null" },
+          "constraint_index": { "type": "integer" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "event_type": { "const": "supply_exhausted" } }
+      },
+      "then": {
+        "properties": {
+          "department": { "type": "integer" },
+          "constraint_index": { "type": "null" }
+        }
+      }
+    }
+  ]
+}

@@ -11,6 +11,9 @@ export const ROUTES = {
     preferences: "/matching/preferences",
     result: "/matching/result",
   },
+  assignment: {
+    root: "/assignment",
+  },
   voting: {
     create: "/voting/create",
     participate: "/voting/v/:token",

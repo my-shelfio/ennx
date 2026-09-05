@@ -90,10 +90,11 @@ ennx/
 │   ├── src/
 │   │   ├── api/
 │   │   │   └── v1/               #   feature ルータを /api/v1 prefix で集約
-│   │   ├── features/              #   機能単位（matching・voting）
+│   │   ├── features/              #   機能単位（matching・assignment・voting）
 │   │   │   └── <feature>/
-│   │   │       ├── domain/       #   最内層（フレームワーク非依存。matching: models / da / fda / ca / checks / events）
-│   │   │       ├── application/  #   usecases / dto（matching: RunMatching / ValidateInput / GetSample / GetConstraintMeta）
+│   │   │       ├── domain/       #   最内層（フレームワーク非依存。matching: models / da / fda / ca / checks / events、
+│   │   │       │                 #   assignment: models / ps / constraints / lottery / checks / events）
+│   │   │       ├── application/  #   usecases / dto（matching: RunMatching ほか、assignment: RunAssignment ほか）
 │   │   │       ├── presentation/ #   FastAPI ルータ（バージョン非依存）・Pydantic スキーマ・エラーハンドラ
 │   │   │       └── infrastructure/ #  config / di（voting: Neon PostgreSQL 実装）
 │   │   ├── shared/                #   feature 横断（性質レポート・エラー基底・エラーハンドラ共通部品・SPA配信・セキュリティヘッダ）
@@ -103,16 +104,18 @@ ennx/
 ├── frontend/
 │   └── src/                      # FSD 6 層（app → pages → widgets → features → entities → shared の一方向）
 │       ├── app/                  #   プロバイダ・ルータ・エントリ
-│       ├── pages/                #   home / setup / preferences / result / voting-create / voting-participate / voting-manage
+│       ├── pages/                #   home / setup / preferences / result / assignment /
+│       │                         #   voting-create / voting-participate / voting-manage
 │       ├── widgets/              #   setup-wizard / preference-matrix / result-summary / assignment-map / step-player /
+│       │                         #   assignment-form / assignment-result / assignment-step-player /
 │       │                         #   global-nav / voting-create-form / voting-ballot-form / voting-results-panel
-│       ├── features/             #   run-matching / validate-input / load-sample / import-input / export-result /
+│       ├── features/             #   run-matching / run-assignment / validate-input / load-sample / import-input / export-result /
 │       │                         #   share-link / clear-data / analytics / ca-constraint-meta /
 │       │                         #   voting-create / voting-participate / voting-manage / export-voting-results
-│       ├── entities/             #   matching（OpenAPI 生成型・zustand ストア・イベントログパーサ）/ voting
+│       ├── entities/             #   matching（OpenAPI 生成型・zustand ストア・イベントログパーサ）/ assignment / voting
 │       └── shared/               #   ui（デザインシステム）/ api / config（ルート定数）/ lib
 │
-├── docs/                         # 本書 / event-schema.md
+├── docs/                         # 本書 / event-schema.md（matching・assignment の 2 スキーマ）
 ├── .claude/                      # rules / skills / agents
 ├── Dockerfile                    # multi-stage: backend → SPA ビルド → 統合ランタイム
 └── render.yaml                   # Render Blueprint（本番 ennx / 開発 ennx-dev）
@@ -128,6 +131,7 @@ ennx/
 | 設定ウィザード | `/matching/setup`       | `pages/setup`              | ステップ 1: 部署数・社員数 / ステップ 2: 制約種別（DA / FDA / CA）・定員・制約詳細                                      |
 | 選好入力       | `/matching/preferences` | `pages/preferences`        | 社員→部署・部署→社員の選好行列エディタ（リアルタイム検証・自動保存）                                                    |
 | 結果           | `/matching/result`      | `pages/result`             | サマリーカード・配属マップ・性質バッジ・詳細テーブル・エクスポート。ステップ再生ビューア（`widgets/step-player`）を内包 |
+| 割り当て       | `/assignment`           | `pages/assignment`         | 片側選好の配分（PS）。規模・受け入れ人数・希望順位・NG ペアを 1 画面で入力し、期待割当・くじ・性質レポート・過程を表示 |
 | 投票作成       | `/voting/create`        | `pages/voting-create`      | 主催者が案・投票ルール・締切を設定し、参加用・管理用 URL を発行                                                         |
 | 投票参加       | `/voting/v/:token`      | `pages/voting-participate` | 匿名参加 URL から投票（ニックネーム必須）                                                                               |
 | 投票管理       | `/voting/m/:token`      | `pages/voting-manage`      | 主催者用。参加状況の確認・締切・集計結果と性質レポートの表示・削除・エクスポート                                        |
@@ -186,6 +190,32 @@ sequenceDiagram
 - **サンプル読込**: `GET /api/v1/sample` から研修医マッチング風のデモ入力を取得してストアに投入し、入力済み状態の選好入力画面を表示する（クリックのみ・1 分以内で結果到達）。
 - **エクスポート**: 保持済みの結果データからクライアント内でファイルを生成する（サーバー往復なし）。JSON = 設定・選好・結果・性質レポートの全量 / CSV = 社員別配属表。投票の集計結果も同様にクライアント内でエクスポートできる（`features/export-voting-results`）。
 
+### 割り当て実行フロー <!-- omit in toc -->
+
+配属マッチングと違い、部署の側は候補者に順位をつけない。社員の希望順位だけを入力し、
+PS メカニズムで「配属される確率（期待割当）」を求め、それを実際に配れる形（確定的な配属のくじ）に
+分解して返す。
+
+```mermaid
+sequenceDiagram
+    actor U as 利用者
+    participant SPA as SPA（React）
+    participant LS as localStorage
+    participant API as API（FastAPI）
+
+    U->>SPA: 受け入れ人数・希望順位・NG ペアを入力
+    SPA->>LS: 逐次自動保存
+    U->>SPA: 「割り当てを実行」
+    SPA->>API: POST /api/v1/assignment/run（設定＋希望順位の全量）
+    Note over API: ①分解可能性（bihierarchy）を検証<br/>②PS で期待割当を求める<br/>③一般化BvN で純割当のくじに分解
+    API-->>SPA: 期待割当・くじ・性質レポート・イベントログ
+    SPA-->>U: 期待割当 → くじ → 性質レポート → 実行過程の順に表示
+```
+
+- **期待割当**: 各社員が各部署に配属される確率。行の合計は必ず 1（∅ = 未配属を含む）。
+- **くじ**: 制約を満たす確定的な配属と、それを引く確率の組。**抽選そのものは行わない**（意思決定を代行しないというスタンスによる）。
+- **保証しない性質の明示**: PS は耐戦略性を満たさないため、性質レポートに注意項目として常に表示する。
+
 ### 投票・合意形成フロー <!-- omit in toc -->
 
 1. **作成**: 主催者が案・投票ルール（多数決・ボルダ・承認投票・コンドルセ方式）・締切を設定して `POST /api/v1/voting/sessions` で投票を作成し、参加用 URL（`/voting/v/:token`）と管理用 URL（`/voting/m/:token`）を受け取る。
@@ -206,6 +236,16 @@ sequenceDiagram
 | GET      | `/api/v1/meta/analytics-config`    | —                   | GA4 測定 ID（`ENNX_GA_MEASUREMENT_ID` 未設定なら null）   |
 | GET      | `/api/v1/sample`                   | GetSample           | 研修医マッチング風サンプル入力                            |
 | GET      | `/healthz`                         | —                   | ヘルスチェック                                            |
+
+割り当て（assignment）のエンドポイント。部署側の順位づけを受け取らない点がマッチングとの違い。
+
+| メソッド | パス                                              | ユースケース                  | 内容                                                       |
+| -------- | ------------------------------------------------- | ----------------------------- | ---------------------------------------------------------- |
+| POST     | `/api/v1/assignment/run`                          | RunAssignment                 | 設定＋希望順位 → 期待割当・くじ・性質レポート・イベントログ |
+| POST     | `/api/v1/assignment/validate`                     | ValidateAssignmentInput       | 入力の事前検証のみ（分解可能性の検証を含む）               |
+| GET      | `/api/v1/assignment/sample`                       | GetAssignmentSample           | 案件アサイン風サンプル入力                                 |
+| GET      | `/api/v1/meta/assignment-constraint-types`        | GetAssignmentConstraintMeta   | 制約種別とメカニズム（PS）のメタ情報                       |
+| GET      | `/api/v1/meta/assignment-upper-constraint-types`  | GetUpperConstraintMeta        | 追加の上限制約種別とフィールド定義（フォームの動的生成用） |
 
 投票（voting）のエンドポイント。参加用・管理用の 2 種類の推測不能トークンで認可する。
 
@@ -228,6 +268,7 @@ sequenceDiagram
 
 - 入力上限: **部署 ≤ 50・社員 ≤ 100**（`presentation/schemas` に定義）。超過は 422、過大ペイロードは 413 で拒否する。
 - アルゴリズムの理論的前提（FDA の「地域内目標定員合計 ≤ 地域上限」、CA の遺伝性制約など）は domain 層の入力検証（`__post_init__` の ValueError）で保証する。
+- 割り当て（PS）では、追加の上限制約が **bihierarchy** を成すこと（＝期待割当を確定的な配属のくじに分解できること）を実行前に検証する。交差する制約（例: NG ペアの鎖状指定）は 422 で拒否し、交差している制約名を理由として返す。
 
 ### エラー形式（RFC 9457） <!-- omit in toc -->
 
@@ -235,12 +276,13 @@ sequenceDiagram
 
 ### イベントログ契約 <!-- omit in toc -->
 
-- 実行過程は [event-schema.md](event-schema.md) の共通スキーマ（JSON Schema: [event-schema.json](event-schema.json)）で `Result.events` に記録する。**API 契約**であり、破壊的変更はスキーマ改版として扱う。
-- `reconstruct_matching` でイベントログから最終結果を再構成でき、配属結果と完全一致することを契約テスト（CI）で保証する。
+- 実行過程は [event-schema.md](event-schema.md) のスキーマで `Result.events` に記録する。**API 契約**であり、破壊的変更はスキーマ改版として扱う。
+- スキーマは feature ごとに分かれる（matching: [event-schema.json](event-schema.json)、assignment: [assignment-event-schema.json](assignment-event-schema.json)）。マッチングはラウンド単位の離散イベント、割り当ては連続時間の区間イベントで、過程の進み方が根本的に異なるため共通化しない。
+- イベントログから最終結果を再構成でき、結果と完全一致することを契約テスト（CI）で保証する（matching は `reconstruct_matching` で配属結果、assignment は `reconstruct_expected_assignment` で期待割当）。
 
 ### 状態管理方針 <!-- omit in toc -->
 
-- マッチングではサーバーはセッション・DB を持たない。
+- マッチング・割り当てではサーバーはセッション・DB を持たない。
 - 入力状態（条件・選好）は zustand ストアから localStorage に逐次永続化し、再訪時に復元できる。
 - 結果・イベントログは localStorage に保存せず、メモリ保持のみ（再表示は localStorage の入力からの再実行で賄う）。
 - 「入力データをクリア」導線を UI に常設し、共有端末での利用後に利用者自身が消去できる。

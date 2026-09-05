@@ -36,6 +36,12 @@ export const MENU_ITEMS: readonly MenuItem[] = [
     matchPrefix: "/matching",
   },
   {
+    id: "assignment",
+    label: "割り当て",
+    path: ROUTES.assignment.root,
+    matchPrefix: "/assignment",
+  },
+  {
     id: "info-sharing",
     label: "情報共有",
     path: ROUTES.voting.create,
