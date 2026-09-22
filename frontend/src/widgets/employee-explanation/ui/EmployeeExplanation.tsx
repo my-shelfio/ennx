@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { MatchingResult } from "../../../entities/matching";
+import type { JourneyPrefs, MatchingResult } from "../../../entities/matching";
 import { buildEmployeeJourney } from "../../../entities/matching";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "../../../shared/ui";
 
@@ -8,8 +8,8 @@ import { buildJourneySummary, describeJourneyStep } from "../lib/summary";
 
 export interface EmployeeExplanationProps {
   result: MatchingResult;
-  /** 実行に使った選好リスト（社員→部署、1-indexed）。 */
-  proposerPrefs: readonly (readonly number[])[];
+  /** 実行に使った選好（社員→部署・部署→社員、1-indexed）。 */
+  prefs: JourneyPrefs;
   /** 説明する社員（0-indexed）。null のときは選択を促す案内を表示する。 */
   employeeIndex: number | null;
   /** 「この社員の過程をステップ再生で見る」押下時のハンドラ。 */
@@ -23,14 +23,13 @@ export interface EmployeeExplanationProps {
  */
 export function EmployeeExplanation({
   result,
-  proposerPrefs,
+  prefs,
   employeeIndex,
   onReplay,
 }: EmployeeExplanationProps) {
   const journey = useMemo(
-    () =>
-      employeeIndex === null ? null : buildEmployeeJourney(result, proposerPrefs, employeeIndex),
-    [result, proposerPrefs, employeeIndex],
+    () => (employeeIndex === null ? null : buildEmployeeJourney(result, prefs, employeeIndex)),
+    [result, prefs, employeeIndex],
   );
 
   if (journey === null) {

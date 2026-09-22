@@ -127,7 +127,7 @@ export function ResultPage() {
           <div ref={explanationRef} className="scroll-mt-6 lg:sticky lg:top-6 lg:self-start">
             <EmployeeExplanation
               result={result}
-              proposerPrefs={input.proposer_prefs}
+              prefs={input}
               employeeIndex={selectedEmployeeIndex}
               onReplay={openReplay}
             />

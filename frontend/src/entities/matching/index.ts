@@ -41,6 +41,7 @@ export { buildEmployeeJourney } from "./lib/employeeJourney";
 export type {
   DepartmentOutcome,
   EmployeeJourney,
+  JourneyPrefs,
   JourneyStep,
   JourneyStepKind,
 } from "./lib/employeeJourney";

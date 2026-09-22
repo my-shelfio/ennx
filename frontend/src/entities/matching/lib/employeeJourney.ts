@@ -51,6 +51,14 @@ export interface EmployeeJourney {
 
 type JourneySource = Pick<MatchingResult, "algorithm" | "events" | "proposer_match">;
 
+/** 経緯の導出に使う選好（実行時の入力。1-indexed）。`MatchingInput` をそのまま渡せる。 */
+export interface JourneyPrefs {
+  /** 社員→部署の希望順位。 */
+  proposer_prefs: readonly (readonly number[])[];
+  /** 部署→社員の優先順位。 */
+  receiver_prefs: readonly (readonly number[])[];
+}
+
 /**
  * イベントログから社員 1 人分の経緯（提案 → 仮受入 / 待機 / 棄却（理由）→ 確定 / 未配属）を組み立てる。
  *
@@ -61,19 +69,22 @@ type JourneySource = Pick<MatchingResult, "algorithm" | "events" | "proposer_mat
  * CA はイベントに社員単位の棄却が現れない（各反復の需要 = propose、部署ごとの
  * カットオフ引き上げ = cutoff_raise、最終確定 = tentative_accept のみ）ため、
  * 「ある反復で部署の需要に含まれ、その部署のカットオフが引き上げられた結果、次の反復で
- * 需要から外れた」ことを棄却（理由: カットオフ）として導出する。希望したのに一度も需要に
- * 含まれなかった部署は、部署側の受け入れ候補外として扱う。
+ * 需要から外れた」ことを棄却（理由: カットオフ）として導出する。
+ * 上位の部署を需要している間に下位の希望部署のカットオフが上がり、その部署を一度も需要せずに
+ * 飛ばした場合は、部署側の優先順位から「その社員が足切りで外れた最初の引き上げ」を特定して
+ * 棄却（理由: カットオフ）とする。部署の優先順位リストに含まれない場合のみ受け入れ候補外とする。
  *
- * @param proposerPrefs 社員→部署の希望順位（1-indexed の部署番号）。
+ * @param prefs 実行に使った選好（社員→部署・部署→社員、いずれも 1-indexed）。
  */
 export function buildEmployeeJourney(
   result: JourneySource,
-  proposerPrefs: readonly (readonly number[])[],
+  prefs: JourneyPrefs,
   employee: number,
 ): EmployeeJourney {
+  const proposerPrefs = prefs.proposer_prefs;
   const steps =
     result.algorithm === "ca"
-      ? buildCaSteps(result.events, employee)
+      ? buildCaSteps(result.events, prefs, employee)
       : buildProposalSteps(result.events, employee);
 
   const finalDepartment = result.proposer_match[employee] ?? -1;
@@ -87,9 +98,9 @@ export function buildEmployeeJourney(
     }
   }
 
-  const prefs = proposerPrefs[employee] ?? [];
-  const finalRankIndex = prefs.indexOf(finalDepartment + 1);
-  const outcomes = prefs.map((departmentOneIndexed, index): DepartmentOutcome => {
+  const employeePrefs = proposerPrefs[employee] ?? [];
+  const finalRankIndex = employeePrefs.indexOf(finalDepartment + 1);
+  const outcomes = employeePrefs.map((departmentOneIndexed, index): DepartmentOutcome => {
     const department = departmentOneIndexed - 1;
     if (department === finalDepartment) {
       return { department, rank: index + 1, status: "assigned", cause: null };
@@ -118,6 +129,26 @@ export function buildEmployeeJourney(
 }
 
 function buildProposalSteps(events: readonly MatchingEvent[], employee: number): JourneyStep[] {
+  const steps = collectProposalSteps(events, employee);
+  // FDA では定員から押し出された社員は同じラウンドで待機リストに回ることがあり、その場合は
+  // 棄却が確定していない（待機として表現する）。待機に回らなかった押し出しは DA と同じく棄却。
+  return steps.filter(
+    (step) =>
+      !(
+        step.kind === "reject" &&
+        step.cause?.kind === "displaced" &&
+        steps.some(
+          (other) =>
+            other.kind === "waitlist" &&
+            other.department === step.department &&
+            other.round === step.round &&
+            other.stepIndex > step.stepIndex,
+        )
+      ),
+  );
+}
+
+function collectProposalSteps(events: readonly MatchingEvent[], employee: number): JourneyStep[] {
   const steps: JourneyStep[] = [];
   events.forEach((event, stepIndex) => {
     if (event.proposer !== employee) {
@@ -150,7 +181,11 @@ function buildProposalSteps(events: readonly MatchingEvent[], employee: number):
   return steps;
 }
 
-function buildCaSteps(events: readonly MatchingEvent[], employee: number): JourneyStep[] {
+function buildCaSteps(
+  events: readonly MatchingEvent[],
+  prefs: JourneyPrefs,
+  employee: number,
+): JourneyStep[] {
   // 反復ごとの「この社員が需要に含まれた部署」と、部署ごとのカットオフ引き上げを集める。
   const demandByRound = new Map<number, { department: number; stepIndex: number }>();
   const raiseByRound = new Map<number, Map<number, { stepIndex: number; reason: string | null | undefined }>>();
@@ -177,6 +212,7 @@ function buildCaSteps(events: readonly MatchingEvent[], employee: number): Journ
   });
 
   const steps: JourneyStep[] = [];
+  const rejectedDepartments = new Set<number>();
   let previousDepartment = -1;
   for (let round = 1; round <= lastRound; round += 1) {
     const demand = demandByRound.get(round);
@@ -194,6 +230,7 @@ function buildCaSteps(events: readonly MatchingEvent[], employee: number): Journ
     const leavesNextRound = round < lastRound && nextDepartment !== department;
     if (raise !== undefined && leavesNextRound) {
       const parsed = parseCutoffRaise(raise.reason);
+      rejectedDepartments.add(department);
       steps.push({
         kind: "reject",
         department,
@@ -206,5 +243,58 @@ function buildCaSteps(events: readonly MatchingEvent[], employee: number): Journ
       });
     }
   }
+  // 一度も需要に含まれないまま飛ばした上位の希望部署: 足切りから外れた引き上げを特定する。
+  const finalDepartment = confirmSteps[0]?.department ?? -1;
+  const employeePrefs = prefs.proposer_prefs[employee] ?? [];
+  const finalRankIndex = employeePrefs.indexOf(finalDepartment + 1);
+  const proposerCount = prefs.proposer_prefs.length;
+  employeePrefs.forEach((departmentOneIndexed, index) => {
+    const department = departmentOneIndexed - 1;
+    if ((finalRankIndex !== -1 && index >= finalRankIndex) || rejectedDepartments.has(department)) {
+      return;
+    }
+    const priorityIndex = (prefs.receiver_prefs[department] ?? []).indexOf(employee + 1);
+    if (priorityIndex === -1) {
+      return; // 優先順位リスト外（受け入れ候補外）。outcomes 側で既定の理由になる。
+    }
+    const exclusion = findExclusionRaise(raiseByRound, department, priorityIndex, proposerCount);
+    if (exclusion !== null) {
+      steps.push({
+        kind: "reject",
+        department,
+        round: exclusion.round,
+        stepIndex: exclusion.stepIndex,
+        cause: { kind: "cutoff", from: exclusion.from, to: exclusion.to },
+      });
+    }
+  });
+
+  steps.sort((a, b) => a.stepIndex - b.stepIndex);
   return [...steps, ...confirmSteps];
+}
+
+type RaisesByRound = ReadonlyMap<
+  number,
+  ReadonlyMap<number, { stepIndex: number; reason: string | null | undefined }>
+>;
+
+/**
+ * 部署の優先順位で 0 始まり `priorityIndex` 位の社員が、足切りから外れた最初のカットオフ
+ * 引き上げを返す。足切りの通過条件は「優先順位（0 始まり）≤ 社員数 − カットオフ」。
+ */
+function findExclusionRaise(
+  raiseByRound: RaisesByRound,
+  department: number,
+  priorityIndex: number,
+  proposerCount: number,
+): { round: number; stepIndex: number; from: number; to: number } | null {
+  const rounds = [...raiseByRound.keys()].sort((a, b) => a - b);
+  for (const round of rounds) {
+    const raise = raiseByRound.get(round)?.get(department);
+    const parsed = raise === undefined ? null : parseCutoffRaise(raise.reason);
+    if (raise !== undefined && parsed !== null && priorityIndex > proposerCount - parsed.to) {
+      return { round, stepIndex: raise.stepIndex, ...parsed };
+    }
+  }
+  return null;
 }
