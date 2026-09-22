@@ -12,6 +12,8 @@ export {
   CardHeader,
   CardTitle,
 } from "./Card";
+export { Dialog } from "./Dialog";
+export type { DialogProps } from "./Dialog";
 export { Drawer } from "./Drawer";
 export type { DrawerProps } from "./Drawer";
 export { Stepper } from "./Stepper";

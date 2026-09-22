@@ -52,3 +52,9 @@ export {
   rejectionCauseLabel,
 } from "./lib/rejectionCause";
 export type { RejectionCause } from "./lib/rejectionCause";
+export { buildDepartmentBreakdown } from "./lib/departmentBreakdown";
+export type {
+  DepartmentApplicant,
+  DepartmentBreakdown,
+  DepartmentCutoff,
+} from "./lib/departmentBreakdown";

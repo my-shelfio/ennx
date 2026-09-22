@@ -110,7 +110,11 @@ export function ResultPage() {
       </p>
 
       <ResultSummary result={result} proposerPrefs={input.proposer_prefs} />
-      <AssignmentMap result={result} proposerPrefs={input.proposer_prefs} />
+      <AssignmentMap
+        result={result}
+        proposerPrefs={input.proposer_prefs}
+        receiverPrefs={input.receiver_prefs}
+      />
 
       <div>
         <h2 className="text-lg font-semibold text-slate-900">詳細</h2>
