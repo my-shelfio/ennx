@@ -102,7 +102,7 @@ export function EmployeeExplanation({
             type="button"
             variant="outline"
             size="sm"
-            className="self-start"
+            className="self-start print:hidden"
             onClick={() => onReplay(journey.employee)}
           >
             この社員の過程をステップ再生で見る

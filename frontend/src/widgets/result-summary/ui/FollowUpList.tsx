@@ -44,7 +44,7 @@ export function FollowUpList({
             第{threshold}希望以下に配属された社員と未配属の社員です。希望から遠い順に並びます。
           </CardDescription>
         </div>
-        <label className="flex shrink-0 items-center gap-2 text-sm text-slate-600">
+        <label className="flex shrink-0 items-center gap-2 text-sm text-slate-600 print:hidden">
           対象
           <select
             value={threshold}

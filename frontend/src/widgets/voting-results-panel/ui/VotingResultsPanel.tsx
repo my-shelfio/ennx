@@ -50,7 +50,7 @@ export function VotingResultsPanel({ results }: VotingResultsPanelProps) {
           <CardTitle>{winnerLabels(results.primary, results.options)}</CardTitle>
           <CardDescription>投票数: {results.ballot_count}件</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="print:hidden">
           <ExportVotingResultsMenu results={results} />
         </CardContent>
       </Card>

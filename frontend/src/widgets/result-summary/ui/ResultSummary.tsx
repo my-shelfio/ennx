@@ -49,7 +49,7 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 print:gap-2">
         <Card>
           <CardHeader>
             <CardDescription>マッチ数 / 全社員</CardDescription>
@@ -109,7 +109,7 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
         <Card>
           <CardHeader>
             <CardTitle>希望順位の分布</CardTitle>
-            <CardDescription>
+            <CardDescription className="print:hidden">
               配属者が第何希望の部署に配属されたかの内訳です。第2希望以下・未配属の段を選ぶと、フォロー推奨の一覧へ移動します。
             </CardDescription>
           </CardHeader>

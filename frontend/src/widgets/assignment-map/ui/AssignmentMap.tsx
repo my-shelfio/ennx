@@ -66,7 +66,7 @@ export function AssignmentMap({ result, proposerPrefs, receiverPrefs }: Assignme
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-3">
         {departments.map((department) => {
           const fillPercent = Math.min(100, Math.round(department.fillRate * 100));
           return (
@@ -131,7 +131,7 @@ export function AssignmentMap({ result, proposerPrefs, receiverPrefs }: Assignme
                   })}
                 </ul>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="print:hidden">
                 <Button
                   type="button"
                   variant="ghost"
