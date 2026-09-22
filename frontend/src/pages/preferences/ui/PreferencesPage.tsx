@@ -37,7 +37,7 @@ export function PreferencesPage() {
   function handleSubmit() {
     runMutation.mutate(input, {
       onSuccess: (result) => {
-        setResult(result);
+        setResult(result, input);
         navigate(ROUTES.matching.result);
       },
       onError: (error) => {

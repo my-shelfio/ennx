@@ -25,6 +25,11 @@ export interface StepPlayerProps {
   /** イベントログ未保持時（`result.events` が空）の再実行ハンドラ（例外フロー1a）。 */
   onReRun?: () => void;
   isReRunning?: boolean;
+  /**
+   * 開いた時点で追跡する社員（0-indexed）。指定時は社員追跡を有効にし、その社員が
+   * 最初に関わるステップから表示する（結果画面の説明パネルからの遷移用）。
+   */
+  initialTrackedEmployeeIndex?: number | null;
 }
 
 const DEFAULT_SPEED_MS = 800;
@@ -46,7 +51,13 @@ const KEYBOARD_HELP_TEXT =
  * キーボード操作（←/→/Space/Home/End）・イベント種別フィルタ・社員追跡・
  * 「配属確定ステップへ」「最終結果へ」のジャンプに対応する。
  */
-export function StepPlayer({ result, onClose, onReRun, isReRunning = false }: StepPlayerProps) {
+export function StepPlayer({
+  result,
+  onClose,
+  onReRun,
+  isReRunning = false,
+  initialTrackedEmployeeIndex = null,
+}: StepPlayerProps) {
   const snapshots = useMemo(
     () =>
       parseMatchingEvents(
@@ -57,11 +68,17 @@ export function StepPlayer({ result, onClose, onReRun, isReRunning = false }: St
     [result.events, result.employee_names.length, result.department_names.length],
   );
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() =>
+    initialTrackedEmployeeIndex === null
+      ? 0
+      : (buildFilteredStepIndices(snapshots, "all", initialTrackedEmployeeIndex)[0] ?? 0),
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [speedMs, setSpeedMs] = useState(DEFAULT_SPEED_MS);
   const [eventFilter, setEventFilter] = useState<EventTypeFilter>("all");
-  const [trackedEmployeeIndex, setTrackedEmployeeIndex] = useState<number | null>(null);
+  const [trackedEmployeeIndex, setTrackedEmployeeIndex] = useState<number | null>(
+    initialTrackedEmployeeIndex,
+  );
   const prefersReducedMotion = useReducedMotion();
 
   const isLastStep = currentStep >= snapshots.length - 1;

@@ -46,9 +46,14 @@ export default defineConfig([
     },
   },
   {
-    // widgets/result-summary・widgets/assignment-map は pages/result からのみ
-    // 参照されるが、widgets/setup-wizard 等と同様に widgets/pages 分離方針に基づく意図的な設計。
-    files: ["src/widgets/result-summary/**", "src/widgets/assignment-map/**"],
+    // widgets/result-summary・widgets/assignment-map・widgets/employee-explanation は
+    // pages/result からのみ参照されるが、widgets/setup-wizard 等と同様に
+    // widgets/pages 分離方針に基づく意図的な設計。
+    files: [
+      "src/widgets/result-summary/**",
+      "src/widgets/assignment-map/**",
+      "src/widgets/employee-explanation/**",
+    ],
     rules: {
       "fsd/insignificant-slice": "off",
     },

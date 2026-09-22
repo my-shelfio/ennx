@@ -37,3 +37,18 @@ export {
   validateRow,
 } from "./lib/preferenceMatrix";
 export type { RankCell, RankMatrix, RowValidation } from "./lib/preferenceMatrix";
+export { buildEmployeeJourney } from "./lib/employeeJourney";
+export type {
+  DepartmentOutcome,
+  EmployeeJourney,
+  JourneyStep,
+  JourneyStepKind,
+} from "./lib/employeeJourney";
+export {
+  classifyRejectReason,
+  describeRejectionCause,
+  isReturnToWaitlist,
+  parseCutoffRaise,
+  rejectionCauseLabel,
+} from "./lib/rejectionCause";
+export type { RejectionCause } from "./lib/rejectionCause";

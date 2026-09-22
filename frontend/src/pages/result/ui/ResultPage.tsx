@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { useMatchingInputStore, useMatchingResultStore } from "../../../entities/matching";
@@ -8,6 +8,7 @@ import { ShareLinkButton } from "../../../features/share-link";
 import { ROUTES } from "../../../shared/config";
 import { Button, useToast } from "../../../shared/ui";
 import { AssignmentMap, DetailTable } from "../../../widgets/assignment-map";
+import { EmployeeExplanation } from "../../../widgets/employee-explanation";
 import { ResultSummary } from "../../../widgets/result-summary";
 import { StepPlayer } from "../../../widgets/step-player";
 
@@ -19,13 +20,25 @@ import { StepPlayer } from "../../../widgets/step-player";
  * 「実行過程を見る」ボタンでステップ再生ビューア（widgets/step-player）を表示する。
  * 「共有リンクをコピー」ボタンは features/share-link の ShareLinkButton に委譲する。
  * 「エクスポート」ボタンは features/export-result の ExportMenu に委譲する。
+ *
+ * 詳細テーブルで社員を選ぶと、その社員の「なぜこの配属か」説明パネル
+ * （widgets/employee-explanation）を表示し、そこから当該社員を追跡した状態で
+ * ステップ再生を開ける。
+ *
+ * 希望順位・説明文の算出には、結果と一緒に保持した「実行時の入力」を使う
+ * （入力ストアは実行後も編集できるため）。保持がない場合のみ入力ストアで代替する。
  */
 export function ResultPage() {
   const result = useMatchingResultStore((state) => state.result);
   const setResult = useMatchingResultStore((state) => state.setResult);
-  const input = useMatchingInputStore((state) => state.input);
+  const runInput = useMatchingResultStore((state) => state.input);
+  const currentInput = useMatchingInputStore((state) => state.input);
+  const input = runInput ?? currentInput;
   const { toast } = useToast();
   const [isReplayOpen, setIsReplayOpen] = useState(false);
+  const [replayEmployeeIndex, setReplayEmployeeIndex] = useState<number | null>(null);
+  const [selectedEmployeeIndex, setSelectedEmployeeIndex] = useState<number | null>(null);
+  const explanationRef = useRef<HTMLDivElement>(null);
   const runMutation = useRunMatching();
 
   if (result === null) {
@@ -35,7 +48,7 @@ export function ResultPage() {
   function handleReRun() {
     runMutation.mutate(input, {
       onSuccess: (nextResult) => {
-        setResult(nextResult);
+        setResult(nextResult, input);
       },
       onError: (error) => {
         toast({
@@ -47,11 +60,25 @@ export function ResultPage() {
     });
   }
 
+  function handleSelectEmployee(employeeIndex: number) {
+    setSelectedEmployeeIndex(employeeIndex);
+    // 1 カラム表示（lg 未満）では説明パネルがテーブルの下にあるため、選択後にパネルへ移動する。
+    if (!window.matchMedia("(min-width: 1024px)").matches) {
+      explanationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function openReplay(employeeIndex: number | null) {
+    setReplayEmployeeIndex(employeeIndex);
+    setIsReplayOpen(true);
+  }
+
   if (isReplayOpen) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
         <StepPlayer
           result={result}
+          initialTrackedEmployeeIndex={replayEmployeeIndex}
           onClose={() => setIsReplayOpen(false)}
           onReRun={handleReRun}
           isReRunning={runMutation.isPending}
@@ -70,7 +97,7 @@ export function ResultPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={() => setIsReplayOpen(true)}>
+          <Button type="button" variant="outline" onClick={() => openReplay(null)}>
             実行過程を見る
           </Button>
           <ShareLinkButton input={input} />
@@ -87,8 +114,24 @@ export function ResultPage() {
 
       <div>
         <h2 className="text-lg font-semibold text-slate-900">詳細</h2>
-        <div className="mt-3">
-          <DetailTable result={result} proposerPrefs={input.proposer_prefs} />
+        <p className="mt-1 text-sm text-slate-500">
+          社員名を選ぶと、その社員の配属の経緯（受け入れられなかった理由を含む）を表示します。
+        </p>
+        <div className="mt-3 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+          <DetailTable
+            result={result}
+            proposerPrefs={input.proposer_prefs}
+            selectedEmployeeIndex={selectedEmployeeIndex}
+            onSelectEmployee={handleSelectEmployee}
+          />
+          <div ref={explanationRef} className="scroll-mt-6 lg:sticky lg:top-6 lg:self-start">
+            <EmployeeExplanation
+              result={result}
+              proposerPrefs={input.proposer_prefs}
+              employeeIndex={selectedEmployeeIndex}
+              onReplay={openReplay}
+            />
+          </div>
         </div>
       </div>
     </div>
