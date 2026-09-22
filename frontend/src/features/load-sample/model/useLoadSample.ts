@@ -6,11 +6,17 @@ import { apiClient, unwrap } from "../../../shared/api";
 
 /**
  * サンプルデータ読込で使う `GET /api/v1/sample` の呼び出しフック。
- * パラメータを取らない呼び出しだが、他の API 呼び出しフック（useRunMatching 等）と
- * 同様に呼び出し側で明示的にトリガーし onSuccess/onError を扱えるよう useMutation を使う。
+ * 変数にサンプルのキーを渡す（`undefined` のときは既定サンプル）。
+ * 他の API 呼び出しフック（useRunMatching 等）と同様に呼び出し側で明示的に
+ * トリガーし onSuccess/onError を扱えるよう useMutation を使う。
  */
-export function useLoadSample(): UseMutationResult<MatchingInput, Error, void> {
+export function useLoadSample(): UseMutationResult<MatchingInput, Error, string | undefined> {
   return useMutation({
-    mutationFn: () => unwrap(apiClient.GET("/api/v1/sample")),
+    mutationFn: (key) =>
+      unwrap(
+        apiClient.GET("/api/v1/sample", {
+          params: { query: key === undefined ? {} : { key } },
+        }),
+      ),
   });
 }

@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import os
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 
 from features.matching.application.usecases import (
     GetCaConstraintMeta,
     GetConstraintMeta,
     GetSample,
+    ListSamples,
     RunMatching,
     ValidateInput,
 )
@@ -27,6 +28,8 @@ from features.matching.presentation.schemas.matching import (
     ConstraintTypeMetaSchema,
     MatchingRequestSchema,
     MatchingRunResponse,
+    SampleListResponse,
+    SampleSummarySchema,
     ValidateResponse,
 )
 from features.matching.presentation.schemas.meta import AnalyticsConfigResponse
@@ -102,10 +105,27 @@ def get_analytics_config() -> AnalyticsConfigResponse:
     return AnalyticsConfigResponse(ga_measurement_id=measurement_id)
 
 
-@_sample_router.get("/sample", summary="デモ用サンプル入力を取得する")
-def get_sample() -> MatchingRequestSchema:
-    """研修医マッチング風のサンプル入力（そのまま run に送信可能）を返す。"""
-    return MatchingRequestSchema.from_dto(GetSample().execute())
+@_sample_router.get(
+    "/sample",
+    summary="デモ用サンプル入力を取得する",
+    responses={status.HTTP_404_NOT_FOUND: {"model": ProblemDetail}},
+)
+def get_sample(
+    key: str | None = Query(
+        default=None,
+        description="サンプルのキー（`GET /api/v1/samples` の key）。省略時は既定サンプル",
+    ),
+) -> MatchingRequestSchema:
+    """キー指定のサンプル入力（そのまま run に送信可能）を返す。未知のキーは 404。"""
+    return MatchingRequestSchema.from_dto(GetSample().execute(key))
+
+
+@_sample_router.get("/samples", summary="デモ用サンプルの一覧を取得する")
+def list_samples() -> SampleListResponse:
+    """サンプルのキー・表示名・概要の一覧を返す（先頭が既定サンプル）。"""
+    return SampleListResponse(
+        samples=[SampleSummarySchema.from_dto(sample) for sample in ListSamples().execute()]
+    )
 
 
 router.include_router(_matching_router)

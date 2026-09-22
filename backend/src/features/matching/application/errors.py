@@ -20,3 +20,14 @@ class InvalidMatchingInputError(ApplicationError):
     def __init__(self, errors: list[FieldError]) -> None:
         super().__init__("／".join(e.message for e in errors))
         self.errors = errors
+
+
+class SampleNotFoundError(ApplicationError):
+    """指定されたキーのサンプルが存在しないことを表すユースケースエラー。
+
+    presentation 層が RFC 9457 の 404 レスポンスへ変換する。
+    """
+
+    def __init__(self, key: str) -> None:
+        super().__init__(f"サンプル「{key}」は存在しません")
+        self.key = key

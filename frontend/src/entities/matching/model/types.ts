@@ -12,3 +12,4 @@ export type MatchingEvent = components["schemas"]["MatchingEventSchema"];
 export type ConstraintEntry = components["schemas"]["ConstraintEntrySchema"];
 export type ReportItem = components["schemas"]["ReportItemSchema"];
 export type ValidateResult = components["schemas"]["ValidateResponse"];
+export type SampleSummary = components["schemas"]["SampleSummarySchema"];
