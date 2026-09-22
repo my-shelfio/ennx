@@ -107,8 +107,12 @@ def _expected_approval_counts(profile: ApprovalTallyInput) -> list[float]:
 
 
 def _assert_ranking_and_winners_follow_scores(result: RuleResult) -> None:
-    n = len(result.scores)
-    assert result.ranking == sorted(range(n), key=lambda o: (-result.scores[o], o))
+    # ranking は全選択肢の並べ替えで、隣り合う 2 件は「スコアが大きい、
+    # または同点ならインデックスが小さい」順に並ぶ（実装のソート式に依存しない書き方）。
+    assert sorted(result.ranking) == list(range(len(result.scores)))
+    for upper, lower in zip(result.ranking, result.ranking[1:], strict=False):
+        upper_score, lower_score = result.scores[upper], result.scores[lower]
+        assert upper_score > lower_score or (upper_score == lower_score and upper < lower)
     top = max(result.scores)
     assert result.winners == [o for o, score in enumerate(result.scores) if score == top]
 
