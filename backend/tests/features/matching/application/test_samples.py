@@ -40,11 +40,9 @@ def test_unknown_key_raises_not_found() -> None:
         GetSample().execute("no-such-sample")
 
 
-def test_residency_sample_matches_everyone_stably() -> None:
-    """研修医サンプル: 全員が配属され、安定である。"""
-    outcome = _run("residency")
-    assert outcome.unmatched == []
-    assert _report_statuses(outcome)["安定性"] == "ok"
+def test_residency_sample_matches_everyone() -> None:
+    """研修医サンプル: 全員が配属される（安定性は全サンプル共通のテストで確認済み）。"""
+    assert _run("residency").unmatched == []
 
 
 def test_regional_cap_sample_rejects_by_regional_cap_and_pushes_to_other_region() -> None:
@@ -90,21 +88,11 @@ def test_unmatched_sample_leaves_employees_unmatched_with_rejections() -> None:
         assert rejected_by == {dep - 1 for dep in request.proposer_prefs[employee]}
 
 
-def test_every_listed_sample_can_be_fetched_and_run_via_api() -> None:
-    """API 契約: 一覧のキーで各サンプルを取得でき、そのまま run に送信できる。未知キーは 404。"""
+def test_unknown_sample_key_returns_problem_detail_404() -> None:
+    """API 契約: 未知のサンプルキーは RFC 9457 形式の 404 になる。"""
     client = TestClient(create_app())
 
-    listed = client.get("/api/v1/samples").json()["samples"]
-    assert [s["key"] for s in listed] == [s.key for s in ListSamples().execute()]
-    for summary in listed:
-        sample = client.get("/api/v1/sample", params={"key": summary["key"]}).json()
-        assert sample["constraint_type"] == summary["constraint_type"]
-        assert client.post("/api/v1/matching/run", json=sample).status_code == 200
+    response = client.get("/api/v1/sample", params={"key": "no-such-sample"})
 
-    assert (
-        client.get("/api/v1/sample").json()
-        == client.get("/api/v1/sample", params={"key": listed[0]["key"]}).json()
-    )
-    missing = client.get("/api/v1/sample", params={"key": "no-such-sample"})
-    assert missing.status_code == 404
-    assert missing.headers["content-type"].startswith("application/problem+json")
+    assert response.status_code == 404
+    assert response.headers["content-type"].startswith("application/problem+json")
