@@ -70,7 +70,7 @@ class TestCondorcetWinner:
     """コンドルセ勝者の有無。"""
 
     def test_cycle_has_no_condorcet_winner(self) -> None:
-        # A>B>C / B>C>A / C>A>B の循環（多数決の逆説の古典例）。
+        # A>B>C / B>C>A / C>A>B の循環（投票の逆理（コンドルセのパラドックス）の古典例）。
         report = _report([[A, B, C], [B, C, A], [C, A, B]])
         assert _item(report, "コンドルセ勝者").status == "info"
 
