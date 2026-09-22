@@ -74,7 +74,7 @@ export function EmployeeExplanation({
           </ul>
         )}
 
-        <details className="text-sm">
+        <details className="text-sm print:hidden">
           <summary className="cursor-pointer font-medium text-primary-700">
             経緯をすべて表示（{journey.steps.length} ステップ）
           </summary>

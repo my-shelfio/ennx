@@ -160,7 +160,7 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
         <CardHeader>
           <CardTitle>性質レポート</CardTitle>
           <CardDescription>
-            実行結果が満たす理論的性質の一覧です。各項目は入力データに対してアルゴリズムが保証する範囲を示すもので、入力データ自体の正確性・網羅性は保証しません（ホバー・フォーカスで詳細を表示）。
+            実行結果が満たす理論的性質の一覧です。各項目は入力データに対してアルゴリズムが保証する範囲を示すもので、入力データ自体の正確性・網羅性は保証しません<span className="print:hidden">（ホバー・フォーカスで詳細を表示）</span>。
           </CardDescription>
         </CardHeader>
         <CardContent>

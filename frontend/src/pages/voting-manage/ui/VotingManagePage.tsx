@@ -205,12 +205,12 @@ export function VotingManagePage() {
           </Card>
         ) : (
           <>
-            {/* 非機能要件「投票結果画面に...旨が常に表示されること」への対応
-                （レビュー指摘対応: widgets/voting-results-panel 側のコメントは
-                「呼び出し元ページで担保する」前提だったが、実際には表示されていなかった）。 */}
             <div className="flex justify-end print:hidden">
               <PrintReportButton />
             </div>
+            {/* 非機能要件「投票結果画面に...旨が常に表示されること」への対応
+                （レビュー指摘対応: widgets/voting-results-panel 側のコメントは
+                「呼び出し元ページで担保する」前提だったが、実際には表示されていなかった）。 */}
             <p className="rounded-control border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
               結果は合意形成のための参考情報であり、決議ではありません。
             </p>

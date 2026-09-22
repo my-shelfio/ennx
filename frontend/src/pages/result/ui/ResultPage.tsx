@@ -20,6 +20,13 @@ import type { DistributionTarget } from "../../../widgets/result-summary";
 import { FollowUpList, ResultSummary } from "../../../widgets/result-summary";
 import { StepPlayer } from "../../../widgets/step-player";
 
+/** 印刷用レポートの見出しに表示するアルゴリズム名。 */
+const ALGORITHM_LABELS: Record<string, string> = {
+  da: "DA（受入保留方式）",
+  fda: "FDA（柔軟な受入保留方式）",
+  ca: "CA（カットオフ調整）",
+};
+
 /**
  * 結果画面。
  * サマリーカード・性質レポート・配属マップ・詳細テーブルを表示する。
@@ -39,11 +46,6 @@ import { StepPlayer } from "../../../widgets/step-player";
  * 「印刷用レポート」はブラウザの印刷で A4 縦のレポートを出力する。印刷時は操作 UI を隠し、
  * 見出し（出力日時・アルゴリズム・規模）を加える。説明パネルは社員を選んでいる場合のみ印刷する。
  */
-const ALGORITHM_LABELS: Record<string, string> = {
-  da: "DA（受入保留方式）",
-  fda: "FDA（柔軟な受入保留方式）",
-  ca: "CA（カットオフ調整）",
-};
 export function ResultPage() {
   const result = useMatchingResultStore((state) => state.result);
   const setResult = useMatchingResultStore((state) => state.setResult);
