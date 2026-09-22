@@ -7,7 +7,19 @@ export interface ResultSummaryProps {
   result: MatchingResult;
   /** 実行に使った選好リスト（社員→部署、1-indexed）。第1希望配属率の算出に使う。 */
   proposerPrefs: readonly (readonly number[])[];
+  /**
+   * 希望順位の分布の段（第 2 希望以下・未配属）を選んだときのハンドラ。
+   * 指定時は該当する段をボタンにし、フォロー推奨一覧への導線にする。
+   */
+  onSelectDistribution?: (target: DistributionTarget) => void;
 }
+
+/** 希望順位の分布で選ばれた段。 */
+export type DistributionTarget = { kind: "rank"; rank: number } | { kind: "unmatched" };
+
+const DISTRIBUTION_ITEM_CLASS = "rounded-control bg-slate-50 px-3 py-2 text-sm text-slate-700";
+const DISTRIBUTION_BUTTON_CLASS =
+  "rounded-control bg-slate-50 px-3 py-2 text-sm text-primary-700 underline-offset-2 hover:bg-primary-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400";
 
 function formatPercent(rate: number): string {
   return `${Math.round(rate * 100)}%`;
@@ -28,7 +40,7 @@ function formatRank(rank: number | null): string {
   return rank === null ? "―" : `${rank.toFixed(1)}位`;
 }
 
-export function ResultSummary({ result, proposerPrefs }: ResultSummaryProps) {
+export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: ResultSummaryProps) {
   const metrics = computeSummaryMetrics(result, proposerPrefs);
   const stabilityItem = findStabilityReportItem(result.report);
   const blockingPairItems = result.report
@@ -98,19 +110,47 @@ export function ResultSummary({ result, proposerPrefs }: ResultSummaryProps) {
           <CardHeader>
             <CardTitle>希望順位の分布</CardTitle>
             <CardDescription>
-              配属者が第何希望の部署に配属されたかの内訳です（未配属者は含みません）。
+              配属者が第何希望の部署に配属されたかの内訳です。第2希望以下・未配属の段を選ぶと、フォロー推奨の一覧へ移動します。
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="flex flex-wrap gap-3">
-              {metrics.rankDistribution.map((count, index) => (
-                <li
-                  key={index}
-                  className="rounded-control bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                >
-                  第{index + 1}希望: {count}人
+              {metrics.rankDistribution.map((count, index) => {
+                const rank = index + 1;
+                const label = `第${rank}希望: ${count}人`;
+                return (
+                  <li key={index}>
+                    {onSelectDistribution !== undefined && rank >= 2 && count > 0 ? (
+                      <button
+                        type="button"
+                        className={DISTRIBUTION_BUTTON_CLASS}
+                        onClick={() => onSelectDistribution({ kind: "rank", rank })}
+                      >
+                        {label}
+                      </button>
+                    ) : (
+                      <span className={`inline-block ${DISTRIBUTION_ITEM_CLASS}`}>{label}</span>
+                    )}
+                  </li>
+                );
+              })}
+              {metrics.unmatchedCount > 0 && (
+                <li>
+                  {onSelectDistribution !== undefined ? (
+                    <button
+                      type="button"
+                      className={DISTRIBUTION_BUTTON_CLASS}
+                      onClick={() => onSelectDistribution({ kind: "unmatched" })}
+                    >
+                      未配属: {metrics.unmatchedCount}人
+                    </button>
+                  ) : (
+                    <span className={`inline-block ${DISTRIBUTION_ITEM_CLASS}`}>
+                      未配属: {metrics.unmatchedCount}人
+                    </span>
+                  )}
                 </li>
-              ))}
+              )}
             </ul>
           </CardContent>
         </Card>

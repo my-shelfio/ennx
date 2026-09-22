@@ -59,3 +59,13 @@ export type {
   DepartmentBreakdown,
   DepartmentCutoff,
 } from "./lib/departmentBreakdown";
+export {
+  DEFAULT_FOLLOW_UP_THRESHOLD,
+  extractFollowUpEmployees,
+  FOLLOW_UP_THRESHOLDS,
+} from "./lib/followUp";
+export type {
+  FollowUpEmployee,
+  FollowUpHigherChoice,
+  FollowUpThreshold,
+} from "./lib/followUp";

@@ -1,7 +1,13 @@
 import { useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 
-import { useMatchingInputStore, useMatchingResultStore } from "../../../entities/matching";
+import type { FollowUpThreshold } from "../../../entities/matching";
+import {
+  DEFAULT_FOLLOW_UP_THRESHOLD,
+  FOLLOW_UP_THRESHOLDS,
+  useMatchingInputStore,
+  useMatchingResultStore,
+} from "../../../entities/matching";
 import { ExportMenu } from "../../../features/export-result";
 import { useRunMatching } from "../../../features/run-matching";
 import { ShareLinkButton } from "../../../features/share-link";
@@ -9,7 +15,8 @@ import { ROUTES } from "../../../shared/config";
 import { Button, useToast } from "../../../shared/ui";
 import { AssignmentMap, DetailTable } from "../../../widgets/assignment-map";
 import { EmployeeExplanation } from "../../../widgets/employee-explanation";
-import { ResultSummary } from "../../../widgets/result-summary";
+import type { DistributionTarget } from "../../../widgets/result-summary";
+import { FollowUpList, ResultSummary } from "../../../widgets/result-summary";
 import { StepPlayer } from "../../../widgets/step-player";
 
 /**
@@ -39,6 +46,10 @@ export function ResultPage() {
   const [replayEmployeeIndex, setReplayEmployeeIndex] = useState<number | null>(null);
   const [selectedEmployeeIndex, setSelectedEmployeeIndex] = useState<number | null>(null);
   const explanationRef = useRef<HTMLDivElement>(null);
+  const [followUpThreshold, setFollowUpThreshold] = useState<FollowUpThreshold>(
+    DEFAULT_FOLLOW_UP_THRESHOLD,
+  );
+  const followUpRef = useRef<HTMLDivElement>(null);
   const runMutation = useRunMatching();
 
   if (result === null) {
@@ -66,6 +77,23 @@ export function ResultPage() {
     if (!window.matchMedia("(min-width: 1024px)").matches) {
       explanationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }
+
+  function handleSelectFromFollowUp(employeeIndex: number) {
+    // フォロー推奨一覧は詳細テーブルより上にあるため、画面幅によらず説明パネルへ移動する。
+    setSelectedEmployeeIndex(employeeIndex);
+    explanationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function handleSelectDistribution(target: DistributionTarget) {
+    if (target.kind === "rank") {
+      // 選んだ段が含まれるしきい値（選択肢の範囲内で最も近いもの）に切り替える。
+      const threshold =
+        [...FOLLOW_UP_THRESHOLDS].reverse().find((value) => value <= target.rank) ??
+        FOLLOW_UP_THRESHOLDS[0];
+      setFollowUpThreshold(threshold);
+    }
+    followUpRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   function openReplay(employeeIndex: number | null) {
@@ -109,7 +137,20 @@ export function ResultPage() {
         本結果は入力データに対してアルゴリズムが理論的に保証する性質を示す参考情報です。配属・評価等の決定を保証・代行するものではなく、入力データ自体の正確性・網羅性は検証していません。
       </p>
 
-      <ResultSummary result={result} proposerPrefs={input.proposer_prefs} />
+      <ResultSummary
+        result={result}
+        proposerPrefs={input.proposer_prefs}
+        onSelectDistribution={handleSelectDistribution}
+      />
+      <div ref={followUpRef} className="scroll-mt-6">
+        <FollowUpList
+          result={result}
+          prefs={input}
+          threshold={followUpThreshold}
+          onThresholdChange={setFollowUpThreshold}
+          onSelectEmployee={handleSelectFromFollowUp}
+        />
+      </div>
       <AssignmentMap
         result={result}
         proposerPrefs={input.proposer_prefs}
@@ -127,6 +168,7 @@ export function ResultPage() {
             proposerPrefs={input.proposer_prefs}
             selectedEmployeeIndex={selectedEmployeeIndex}
             onSelectEmployee={handleSelectEmployee}
+            followUpThreshold={followUpThreshold}
           />
           <div ref={explanationRef} className="scroll-mt-6 lg:sticky lg:top-6 lg:self-start">
             <EmployeeExplanation
