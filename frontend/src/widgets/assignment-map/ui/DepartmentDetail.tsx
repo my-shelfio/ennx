@@ -112,8 +112,10 @@ export function DepartmentDetail({
                 : "受け入れ対象なし"}
             </p>
             <p className="mt-1 text-xs">
-              定員・NG ペア等の制約を満たすまでカットオフを引き上げた結果です（内部値 {breakdown.cutoff.value}）。
-              この順位までの社員のうち、{departmentName}を最も希望する社員が受け入れられます。
+              {breakdown.cutoff.value > 1
+                ? `定員・NG ペア等の制約を満たすまでカットオフを引き上げた結果です（内部値 ${breakdown.cutoff.value}）。`
+                : "カットオフは引き上げられておらず、優先順位リストの全員が受け入れ対象です（内部値 1）。"}
+              この順位までの社員のうち、足切りを通過した部署の中で{departmentName}を最も希望する社員が受け入れられます。
             </p>
           </div>
         )}

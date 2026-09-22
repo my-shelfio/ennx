@@ -2,6 +2,11 @@ import { useState } from "react";
 
 import type { MatchingResult } from "../../../entities/matching";
 import {
+  compareByDistanceFromPreference,
+  DEFAULT_FOLLOW_UP_THRESHOLD,
+  isFollowUpTarget,
+} from "../../../entities/matching";
+import {
   Badge,
   Card,
   CardContent,
@@ -23,7 +28,7 @@ export interface DetailTableProps {
   selectedEmployeeIndex?: number | null;
   /** 社員を選んだときのハンドラ。指定時は社員名をクリック可能にする。 */
   onSelectEmployee?: (employeeIndex: number) => void;
-  /** 「第 N 希望以下のみ」の絞り込みに使うしきい値（既定: 3）。 */
+  /** 「第 N 希望以下」の絞り込みに使うしきい値（既定: フォロー推奨の既定値）。 */
   followUpThreshold?: number;
 }
 
@@ -42,18 +47,14 @@ function applyFilterAndSort(
       return row.departmentIndex === null;
     }
     if (filter === "followUp") {
-      return row.rank === null || row.rank >= threshold;
+      return isFollowUpTarget(row, threshold);
     }
     return true;
   });
   if (sort === "employee") {
     return filtered;
   }
-  return [...filtered].sort(
-    (a, b) =>
-      (b.rank ?? Number.POSITIVE_INFINITY) - (a.rank ?? Number.POSITIVE_INFINITY) ||
-      a.employeeIndex - b.employeeIndex,
-  );
+  return [...filtered].sort(compareByDistanceFromPreference);
 }
 
 const SELECT_CLASS =
@@ -108,7 +109,7 @@ export function DetailTable({
   proposerPrefs,
   selectedEmployeeIndex = null,
   onSelectEmployee,
-  followUpThreshold = 3,
+  followUpThreshold = DEFAULT_FOLLOW_UP_THRESHOLD,
 }: DetailTableProps) {
   const [filter, setFilter] = useState<RowFilter>("all");
   const [sort, setSort] = useState<RowSort>("employee");

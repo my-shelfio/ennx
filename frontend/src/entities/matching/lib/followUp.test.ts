@@ -3,7 +3,12 @@ import { describe, expect, test } from "vitest";
 import type { MatchingResult } from "../model/types";
 
 import { buildEmployeeAssignmentRows } from "./assignment";
-import { extractFollowUpEmployees, FOLLOW_UP_THRESHOLDS } from "./followUp";
+import {
+  compareByDistanceFromPreference,
+  extractFollowUpEmployees,
+  FOLLOW_UP_THRESHOLDS,
+  isFollowUpTarget,
+} from "./followUp";
 import { SAMPLE_RUNS } from "./sampleRuns.testdata";
 
 function asResult(run: (typeof SAMPLE_RUNS)[keyof typeof SAMPLE_RUNS]): MatchingResult {
@@ -46,5 +51,22 @@ test("未配属の社員は第 1〜2 希望の棄却理由つきで先頭に並�
   expect(followUps[0]?.topChoices.map((c) => [c.rank, c.departmentName, c.cause?.kind])).toEqual([
     [1, "企画部", "capacity"],
     [2, "開発部", "capacity"],
+  ]);
+});
+
+test("詳細テーブルと共用する判定・並び順: 第 N 希望以下と未配属・希望外が対象で、希望から遠い順に並ぶ", () => {
+  expect(isFollowUpTarget({ rank: null }, 3)).toBe(true);
+  expect(isFollowUpTarget({ rank: 3 }, 3)).toBe(true);
+  expect(isFollowUpTarget({ rank: 2 }, 3)).toBe(false);
+
+  const rows = [
+    { employeeIndex: 0, rank: 1 },
+    { employeeIndex: 1, rank: null },
+    { employeeIndex: 2, rank: 3 },
+    { employeeIndex: 3, rank: 3 },
+    { employeeIndex: 4, rank: null },
+  ];
+  expect([...rows].sort(compareByDistanceFromPreference).map((row) => row.employeeIndex)).toEqual([
+    1, 4, 2, 3, 0,
   ]);
 });

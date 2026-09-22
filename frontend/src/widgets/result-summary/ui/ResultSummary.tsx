@@ -105,12 +105,12 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
         </Card>
       </div>
 
-      {metrics.rankDistribution.length > 0 ? (
+      {metrics.rankDistribution.length > 0 || metrics.unmatchedCount > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>希望順位の分布</CardTitle>
             <CardDescription className="print:hidden">
-              配属者が第何希望の部署に配属されたかの内訳です。第2希望以下・未配属の段を選ぶと、フォロー推奨の一覧へ移動します。
+              社員が第何希望の部署に配属されたか（または未配属か）の内訳です。第2希望以下・未配属の段を選ぶと、フォロー推奨の一覧へ移動します。
             </CardDescription>
           </CardHeader>
           <CardContent>
