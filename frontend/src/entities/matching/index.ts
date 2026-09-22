@@ -60,9 +60,11 @@ export type {
   DepartmentCutoff,
 } from "./lib/departmentBreakdown";
 export {
+  compareByDistanceFromPreference,
   DEFAULT_FOLLOW_UP_THRESHOLD,
   extractFollowUpEmployees,
   FOLLOW_UP_THRESHOLDS,
+  isFollowUpTarget,
 } from "./lib/followUp";
 export type {
   FollowUpEmployee,

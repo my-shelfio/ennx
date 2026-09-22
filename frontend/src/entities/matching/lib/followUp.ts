@@ -31,6 +31,31 @@ export interface FollowUpEmployee {
   topChoices: FollowUpHigherChoice[];
 }
 
+/** 希望順位を持つ行（配属先の希望順位。未配属・希望外は null）。 */
+interface RankedRow {
+  employeeIndex: number;
+  rank: number | null;
+}
+
+/**
+ * フォロー推奨の対象（第 threshold 希望以下に配属、または未配属・希望外）かどうか。
+ * フォロー推奨一覧と詳細テーブルの絞り込みで同じ判定を使う。
+ */
+export function isFollowUpTarget(row: Pick<RankedRow, "rank">, threshold: number): boolean {
+  return row.rank === null || row.rank >= threshold;
+}
+
+/**
+ * 希望から遠い順（未配属・希望外 → 希望順位の降順 → 社員番号順）の比較関数。
+ * フォロー推奨一覧と詳細テーブルの並べ替えで同じ順序を使う。
+ */
+export function compareByDistanceFromPreference(a: RankedRow, b: RankedRow): number {
+  return (
+    (b.rank ?? Number.POSITIVE_INFINITY) - (a.rank ?? Number.POSITIVE_INFINITY) ||
+    a.employeeIndex - b.employeeIndex
+  );
+}
+
 /** フォロー推奨の表示件数に含める上位希望の数（第 1〜2 希望）。 */
 const TOP_CHOICE_COUNT = 2;
 
@@ -47,7 +72,7 @@ export function extractFollowUpEmployees(
   threshold: number,
 ): FollowUpEmployee[] {
   const rows = buildEmployeeAssignmentRows(result, prefs.proposer_prefs);
-  const targets = rows.filter((row) => row.rank === null || row.rank >= threshold);
+  const targets = rows.filter((row) => isFollowUpTarget(row, threshold));
 
   return targets
     .map((row) => {
@@ -70,9 +95,5 @@ export function extractFollowUpEmployees(
         topChoices,
       };
     })
-    .sort(
-      (a, b) =>
-        (b.rank ?? Number.POSITIVE_INFINITY) - (a.rank ?? Number.POSITIVE_INFINITY) ||
-        a.employeeIndex - b.employeeIndex,
-    );
+    .sort(compareByDistanceFromPreference);
 }
