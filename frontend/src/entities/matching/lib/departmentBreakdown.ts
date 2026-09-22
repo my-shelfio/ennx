@@ -56,6 +56,7 @@ export function buildDepartmentBreakdown(
   receiverPrefs: readonly (readonly number[])[],
   department: number,
 ): DepartmentBreakdown {
+  const journeyPrefs = { proposer_prefs: proposerPrefs, receiver_prefs: receiverPrefs };
   const priorities = receiverPrefs[department] ?? [];
   const applicants: DepartmentApplicant[] = [];
 
@@ -64,7 +65,7 @@ export function buildDepartmentBreakdown(
     if (preferenceIndex === -1) {
       return;
     }
-    const outcome = buildEmployeeJourney(result, proposerPrefs, employee).outcomes.find(
+    const outcome = buildEmployeeJourney(result, journeyPrefs, employee).outcomes.find(
       (candidate) => candidate.department === department,
     );
     const priorityIndex = priorities.indexOf(employee + 1);
