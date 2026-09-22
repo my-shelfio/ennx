@@ -8,7 +8,7 @@ const runs = Object.entries(SAMPLE_RUNS);
 describe.each(runs)("サンプル %s", (_key, run) => {
   const { result, input } = run;
   const journeys = result.employee_names.map((_, employee) =>
-    buildEmployeeJourney(result, input.proposer_prefs, employee),
+    buildEmployeeJourney(result, input, employee),
   );
 
   test("経緯の確定先が配属結果と一致し、未配属なら確定ステップを持たない", () => {
@@ -48,6 +48,10 @@ describe.each(runs)("サンプル %s", (_key, run) => {
       );
       for (const outcome of rejected) {
         expect(outcome.cause).not.toBeNull();
+        // 「受け入れ候補外」は部署の優先順位リストに本当に含まれていない場合に限る。
+        if (outcome.cause?.kind === "unacceptable") {
+          expect(input.receiver_prefs[outcome.department]).not.toContain(employee + 1);
+        }
       }
     });
   });
@@ -55,7 +59,7 @@ describe.each(runs)("サンプル %s", (_key, run) => {
 
 test("DA（定員不足）: 未配属の社員は希望した全部署で定員超過により棄却されている", () => {
   const { result, input } = SAMPLE_RUNS.unmatched;
-  const journey = buildEmployeeJourney(result, input.proposer_prefs, 0);
+  const journey = buildEmployeeJourney(result, input, 0);
 
   expect(journey.finalDepartment).toBe(-1);
   expect(journey.finalRank).toBeNull();
@@ -69,7 +73,7 @@ test("DA（定員不足）: 未配属の社員は希望した全部署で定員�
 test("FDA（地域上限）: 首都圏を希望した社員の棄却理由に地域上限が含まれ、待機も経緯に残る", () => {
   const { result, input } = SAMPLE_RUNS["regional-cap"];
   // 上田（社員 2）: 横浜支社・東京本社を希望したが地域上限で入れず、大阪支社に配属。
-  const journey = buildEmployeeJourney(result, input.proposer_prefs, 2);
+  const journey = buildEmployeeJourney(result, input, 2);
 
   expect(journey.finalDepartment).toBe(2);
   expect(journey.finalRank).toBe(3);
@@ -80,7 +84,7 @@ test("FDA（地域上限）: 首都圏を希望した社員の棄却理由に地
   expect(journey.steps.some((step) => step.kind === "waitlist")).toBe(true);
 
   // 石田（社員 1）: 東京本社の待機リストに入った後、地域上限で棄却され、横浜支社に確定。
-  const waitlisted = buildEmployeeJourney(result, input.proposer_prefs, 1);
+  const waitlisted = buildEmployeeJourney(result, input, 1);
   expect(waitlisted.steps.map((step) => [step.kind, step.department])).toEqual([
     ["propose", 0],
     ["waitlist", 0],
@@ -94,7 +98,7 @@ test("FDA（地域上限）: 首都圏を希望した社員の棄却理由に地
 test("CA（NG ペア）: カットオフの引き上げで第 1 希望から外れた社員は理由 cutoff で棄却になる", () => {
   const { result, input } = SAMPLE_RUNS["ng-pair"];
   // 石田（社員 1）: 企画部（第 1 希望）でカットオフ 1 → 2 により外れ、開発部（第 2 希望）に確定。
-  const journey = buildEmployeeJourney(result, input.proposer_prefs, 1);
+  const journey = buildEmployeeJourney(result, input, 1);
 
   expect(journey.finalDepartment).toBe(2);
   expect(journey.finalRank).toBe(2);
@@ -125,7 +129,7 @@ test("FDA: 待機リストからの繰り上げ受入は確定として扱い、
     ],
   };
 
-  const journey = buildEmployeeJourney(result, [[1]], 0);
+  const journey = buildEmployeeJourney(result, { proposer_prefs: [[1]], receiver_prefs: [[1]] }, 0);
 
   expect(journey.steps.map((step) => step.kind)).toEqual([
     "propose",
@@ -136,4 +140,96 @@ test("FDA: 待機リストからの繰り上げ受入は確定として扱い、
   ]);
   expect(journey.steps.at(-1)?.stepIndex).toBe(4);
   expect(journey.outcomes).toEqual([{ department: 0, rank: 1, status: "assigned", cause: null }]);
+});
+
+test("CA: 上位の部署を需要している間に足切りで外れた下位の希望部署も、カットオフによる棄却として説明する", () => {
+  // 社員 0 は部署 1 → 部署 0 → 部署 2 の順に希望。部署 1 を需要している間（ラウンド 2）に
+  // 部署 0 のカットオフが 1 → 2 に上がって足切り（部署 0 の優先順位 4 位 / 社員 4 名）から外れ、
+  // 部署 1 を外れた後は部署 0 を飛ばして部署 2 に移る。
+  const prefs = {
+    proposer_prefs: [[2, 1, 3], [2, 3, 1], [2, 1, 3], [1, 3, 2]],
+    receiver_prefs: [[4, 2, 3, 1], [4, 2, 1, 3], [4, 1, 3, 2]],
+  };
+  const result = {
+    algorithm: "ca",
+    proposer_match: [2, 1, -1, 0],
+    events: [
+      { round: 1, event_type: "propose", proposer: 3, receiver: 0, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 1, event_type: "propose", proposer: 0, receiver: 1, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 1, event_type: "propose", proposer: 1, receiver: 1, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 1, event_type: "propose", proposer: 2, receiver: 1, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 1, event_type: "cutoff_raise", proposer: null, receiver: 1, reason: "制約超過によりカットオフを 1 → 2 に引き上げ" },
+      { round: 2, event_type: "propose", proposer: 2, receiver: 0, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 2, event_type: "propose", proposer: 3, receiver: 0, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 2, event_type: "propose", proposer: 0, receiver: 1, reason: "カットオフ 2 のもとで需要に含まれる" },
+      { round: 2, event_type: "propose", proposer: 1, receiver: 1, reason: "カットオフ 2 のもとで需要に含まれる" },
+      { round: 2, event_type: "cutoff_raise", proposer: null, receiver: 0, reason: "制約超過によりカットオフを 1 → 2 に引き上げ" },
+      { round: 2, event_type: "cutoff_raise", proposer: null, receiver: 1, reason: "制約超過によりカットオフを 2 → 3 に引き上げ" },
+      { round: 3, event_type: "propose", proposer: 2, receiver: 0, reason: "カットオフ 2 のもとで需要に含まれる" },
+      { round: 3, event_type: "propose", proposer: 3, receiver: 0, reason: "カットオフ 2 のもとで需要に含まれる" },
+      { round: 3, event_type: "propose", proposer: 1, receiver: 1, reason: "カットオフ 3 のもとで需要に含まれる" },
+      { round: 3, event_type: "propose", proposer: 0, receiver: 2, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 3, event_type: "cutoff_raise", proposer: null, receiver: 0, reason: "制約超過によりカットオフを 2 → 3 に引き上げ" },
+      { round: 4, event_type: "propose", proposer: 3, receiver: 0, reason: "カットオフ 3 のもとで需要に含まれる" },
+      { round: 4, event_type: "propose", proposer: 1, receiver: 1, reason: "カットオフ 3 のもとで需要に含まれる" },
+      { round: 4, event_type: "propose", proposer: 0, receiver: 2, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 4, event_type: "propose", proposer: 2, receiver: 2, reason: "カットオフ 1 のもとで需要に含まれる" },
+      { round: 4, event_type: "cutoff_raise", proposer: null, receiver: 2, reason: "制約超過によりカットオフを 1 → 2 に引き上げ" },
+      { round: 5, event_type: "propose", proposer: 3, receiver: 0, reason: "カットオフ 3 のもとで需要に含まれる" },
+      { round: 5, event_type: "propose", proposer: 1, receiver: 1, reason: "カットオフ 3 のもとで需要に含まれる" },
+      { round: 5, event_type: "propose", proposer: 0, receiver: 2, reason: "カットオフ 2 のもとで需要に含まれる" },
+      { round: 5, event_type: "propose", proposer: 2, receiver: 2, reason: "カットオフ 2 のもとで需要に含まれる" },
+      { round: 5, event_type: "cutoff_raise", proposer: null, receiver: 2, reason: "制約超過によりカットオフを 2 → 3 に引き上げ" },
+      { round: 6, event_type: "propose", proposer: 3, receiver: 0, reason: "カットオフ 3 のもとで需要に含まれる" },
+      { round: 6, event_type: "propose", proposer: 1, receiver: 1, reason: "カットオフ 3 のもとで需要に含まれる" },
+      { round: 6, event_type: "propose", proposer: 0, receiver: 2, reason: "カットオフ 3 のもとで需要に含まれる" },
+      { round: 6, event_type: "tentative_accept", proposer: 3, receiver: 0, reason: "不動点カットオフのもとで確定受入" },
+      { round: 6, event_type: "tentative_accept", proposer: 1, receiver: 1, reason: "不動点カットオフのもとで確定受入" },
+      { round: 6, event_type: "tentative_accept", proposer: 0, receiver: 2, reason: "不動点カットオフのもとで確定受入" },
+    ],
+  };
+
+  const journey = buildEmployeeJourney(result, prefs, 0);
+
+  expect(journey.finalDepartment).toBe(2);
+  expect(journey.outcomes.map((outcome) => [outcome.department, outcome.status, outcome.cause])).toEqual([
+    [1, "rejected", { kind: "cutoff", from: 2, to: 3 }],
+    [0, "rejected", { kind: "cutoff", from: 1, to: 2 }],
+    [2, "assigned", null],
+  ]);
+  // 飛ばした部署の棄却は、足切りから外れた cutoff_raise（ラウンド 2・部署 0）を指す。
+  const skipped = journey.steps.find((step) => step.kind === "reject" && step.department === 0);
+  expect(skipped?.round).toBe(2);
+  expect(result.events[skipped?.stepIndex ?? -1]?.event_type).toBe("cutoff_raise");
+  // 時系列はイベント順に並ぶ。
+  const indices = journey.steps.map((step) => step.stepIndex);
+  expect(indices).toEqual([...indices].sort((a, b) => a - b));
+});
+
+test("FDA: 押し出し直後に同じ部署の待機リストへ回った場合は棄却ではなく待機として扱う", () => {
+  const result = {
+    algorithm: "fda",
+    proposer_match: [1],
+    events: [
+      { round: 1, event_type: "propose", proposer: 0, receiver: 0, reason: null },
+      { round: 1, event_type: "tentative_accept", proposer: 0, receiver: 0, reason: null },
+      { round: 2, event_type: "reject", proposer: 0, receiver: 0, reason: "定員超過（優先順位の高い提案者に押し出し）" },
+      { round: 2, event_type: "waitlist", proposer: 0, receiver: 0, reason: "定員超過（待機リストへ）" },
+      { round: 2, event_type: "reject", proposer: 0, receiver: 0, reason: "地域上限（1人）超過" },
+      { round: 3, event_type: "propose", proposer: 0, receiver: 1, reason: null },
+      { round: 3, event_type: "tentative_accept", proposer: 0, receiver: 1, reason: null },
+    ],
+  };
+
+  const journey = buildEmployeeJourney(result, { proposer_prefs: [[1, 2]], receiver_prefs: [[1], [1]] }, 0);
+
+  expect(journey.steps.map((step) => [step.kind, step.cause?.kind ?? null])).toEqual([
+    ["propose", null],
+    ["hold", null],
+    ["waitlist", null],
+    ["reject", "regionalCap"],
+    ["propose", null],
+    ["hold", null],
+    ["confirm", null],
+  ]);
 });
