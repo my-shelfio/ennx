@@ -14,6 +14,7 @@ EXPECTED_PATHS = (
     "/api/v1/meta/ca-constraint-types",
     "/api/v1/meta/analytics-config",
     "/api/v1/sample",
+    "/api/v1/samples",
     "/api/v1/assignment/run",
     "/api/v1/assignment/validate",
     "/api/v1/assignment/sample",

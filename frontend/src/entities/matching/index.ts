@@ -4,6 +4,7 @@ export type {
   MatchingInput,
   MatchingResult,
   ReportItem,
+  SampleSummary,
   ValidateResult,
 } from "./model/types";
 export {

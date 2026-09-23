@@ -1,7 +1,15 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../shared/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../../../shared/ui";
 
 import { MODULE_INTRO_STEP_TITLES } from "../lib/steps";
 import type { ModuleIntroStepDescriptions } from "../lib/steps";
@@ -17,6 +25,8 @@ export interface ModuleIntroCta {
 export interface ModuleIntroProperty {
   name: string;
   description: string;
+  /** その性質が効く様子を確かめられるサンプルへの導線（任意）。 */
+  sampleLink?: { label: string; to: string };
 }
 
 export interface ModuleIntroProps {
@@ -136,13 +146,20 @@ export function ModuleIntro({
           </p>
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {properties.map((property) => (
-              <Card key={property.name}>
+              <Card key={property.name} className="flex flex-col">
                 <CardHeader>
                   <CardTitle>{property.name}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1">
                   <CardDescription>{property.description}</CardDescription>
                 </CardContent>
+                {property.sampleLink !== undefined && (
+                  <CardFooter>
+                    <Button asChild variant="outline" size="sm">
+                      <Link to={property.sampleLink.to}>{property.sampleLink.label}</Link>
+                    </Button>
+                  </CardFooter>
+                )}
               </Card>
             ))}
           </div>

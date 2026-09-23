@@ -3,12 +3,16 @@ import { useEffect } from "react";
 import { ROUTES, withSampleQuery } from "../../../shared/config";
 import { ModuleIntro } from "../../../widgets/module-intro";
 
+import { SAMPLE_KEYS } from "../lib/sampleKeys";
+
 import { AlgorithmSection } from "./AlgorithmSection";
+import { SampleSection } from "./SampleSection";
 
 /**
  * 配属マッチングの導入ページ（"/matching"）。
- * 共通骨格（ModuleIntro）にアルゴリズム 3 種の解説を差し込み、設定ウィザードへ送る。
- * サンプルは既存のクエリ指定（"?sample=1"）をそのまま使う。
+ * 共通骨格（ModuleIntro）にアルゴリズム 3 種の解説とサンプル一覧を差し込み、設定ウィザードへ送る。
+ * 主 CTA の「サンプルデータで試す」は既定サンプル（"?sample=1"）を、性質・アルゴリズムごとの
+ * 導線はそれぞれの現象が起きるサンプル（"?sample=<キー>"）を読み込む。
  */
 export function MatchingIntroPage() {
   useEffect(() => {
@@ -42,16 +46,28 @@ export function MatchingIntroPage() {
           name: "安定性",
           description:
             "「両者とも今より良くなる入れ替え」が存在しない配属になります。後からの不満の申し立てに理論で答えられます。",
+          sampleLink: {
+            label: "安定な配属のサンプルで試す",
+            to: withSampleQuery(ROUTES.matching.setup, SAMPLE_KEYS.residency),
+          },
         },
         {
           name: "個人合理性",
           description:
             "希望に挙げていない部署へ勝手に配属されることはありません。",
+          sampleLink: {
+            label: "定員不足（未配属）のサンプルで試す",
+            to: withSampleQuery(ROUTES.matching.setup, SAMPLE_KEYS.unmatched),
+          },
         },
         {
           name: "定員・上限の遵守",
           description:
             "部署ごとの定員に加え、地域上限や予算・属性人数といった複合的な上限制約も満たします。",
+          sampleLink: {
+            label: "地域上限のサンプルで試す",
+            to: withSampleQuery(ROUTES.matching.setup, SAMPLE_KEYS.regionalCap),
+          },
         },
       ]}
       ctas={[
@@ -64,6 +80,7 @@ export function MatchingIntroPage() {
       ]}
     >
       <AlgorithmSection />
+      <SampleSection />
     </ModuleIntro>
   );
 }

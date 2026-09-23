@@ -47,16 +47,22 @@ export function buildVotingManageUrl(token: string): string {
  */
 export const SAMPLE_PARAM = "sample";
 
-/** `SAMPLE_PARAM` がこの値のとき、実行画面はマウント時にサンプルを読み込む。 */
+/**
+ * `SAMPLE_PARAM` がこの値のとき、実行画面はマウント時に既定のサンプルを読み込む。
+ * 配属マッチングはこの値以外にサンプルのキー（例: "ng-pair"）も受け付ける。
+ */
 export const SAMPLE_VALUE = "1";
 
 /**
  * 実行画面のパスにサンプル読み込みのクエリを付与する。
  * 既にクエリを持つパスにも正しく連結できるよう、区切り文字を判定する。
+ *
+ * @param sampleKey 読み込むサンプルのキー。省略時は既定サンプル（`SAMPLE_VALUE`）。
  */
-export function withSampleQuery(path: string): string {
+export function withSampleQuery(path: string, sampleKey?: string): string {
   const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}${SAMPLE_PARAM}=${SAMPLE_VALUE}`;
+  const value = encodeURIComponent(sampleKey ?? SAMPLE_VALUE);
+  return `${path}${separator}${SAMPLE_PARAM}=${value}`;
 }
 
 /**
