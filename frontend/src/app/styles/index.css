@@ -87,3 +87,53 @@
     @apply bg-white text-slate-900 antialiased;
   }
 }
+
+/*
+ * 印刷用スタイル（結果画面・投票の集計結果の「印刷用レポート」）。
+ * 操作 UI（ヘッダー・フッター・ボタン類）は各コンポーネントの `print:hidden` で消し、
+ * ここでは用紙設定・配色・影・改ページなどページ全体に効く調整のみを行う。
+ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  :root {
+    color-scheme: light;
+    /* rem 基準のため、ルートの文字サイズで全体を縮小して A4 に収める。 */
+    font-size: 11px;
+  }
+
+  body {
+    background: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 影は印刷でにじむため消し、枠線だけを残す。 */
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+  }
+
+  /* カードは途中で改ページせず、余白を詰めて紙面に収める。 */
+  .rounded-card {
+    break-inside: avoid;
+  }
+
+  .rounded-card .p-6 {
+    padding: 0.75rem 1rem;
+  }
+
+  .rounded-card .p-6.pt-0 {
+    padding-top: 0;
+  }
+
+  /* モーダル・トースト・ツールチップは印刷しない。 */
+  [role="dialog"],
+  [role="tooltip"] {
+    display: none !important;
+  }
+}

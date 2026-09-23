@@ -14,7 +14,7 @@ import { cn } from "../lib/cn";
  */
 export function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full overflow-x-auto print:overflow-visible">
       <table className={cn("w-full border-collapse text-sm", className)} {...props} />
     </div>
   );
