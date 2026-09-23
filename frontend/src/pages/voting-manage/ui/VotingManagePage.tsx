@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
+import { PrintReportButton, PrintReportHeader } from "../../../features/print-report";
 import {
   useAdminSession,
   useCloseVotingSession,
@@ -15,6 +16,8 @@ import { VotingResultsPanel } from "../../../widgets/voting-results-panel";
  * 投票管理ページ。
  * 参加用・管理用 URL の再表示、締切前は「締め切って集計する」、締切後は集計結果
  * (widgets/voting-results-panel)を表示する。削除は確認の上で即時実行する。
+ * 集計結果の表示中は「印刷用レポート」でブラウザ印刷できる。印刷には集計結果と
+ * 「決議ではなく参考情報」の旨のみを含め、URL（管理用 URL を含む）・操作カードは印刷しない。
  */
 export function VotingManagePage() {
   const { token } = useParams<{ token: string }>();
@@ -97,8 +100,16 @@ export function VotingManagePage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
-      <div>
+    <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6 print:max-w-none print:gap-4 print:p-0">
+      <PrintReportHeader
+        title="投票結果レポート"
+        meta={[
+          `投票: ${session.title}`,
+          `締切: ${new Date(session.deadline).toLocaleString("ja-JP")}`,
+          `投票数: ${session.ballot_count}件`,
+        ]}
+      />
+      <div className="print:hidden">
         <h1 className="text-2xl font-bold text-slate-900">{session.title}</h1>
         <p className="mt-1 text-sm text-slate-500">
           締切: {new Date(session.deadline).toLocaleString("ja-JP")} ／ 投票数:{" "}
@@ -106,7 +117,7 @@ export function VotingManagePage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="print:hidden">
         <CardHeader>
           <CardTitle>URL</CardTitle>
           <CardDescription>参加用 URL は参加者への配布用、管理用 URL はこのページです。</CardDescription>
@@ -149,7 +160,7 @@ export function VotingManagePage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="print:hidden">
         <CardHeader>
           <CardTitle>投票者</CardTitle>
           <CardDescription>
@@ -194,6 +205,9 @@ export function VotingManagePage() {
           </Card>
         ) : (
           <>
+            <div className="flex justify-end print:hidden">
+              <PrintReportButton />
+            </div>
             {/* 非機能要件「投票結果画面に...旨が常に表示されること」への対応
                 （レビュー指摘対応: widgets/voting-results-panel 側のコメントは
                 「呼び出し元ページで担保する」前提だったが、実際には表示されていなかった）。 */}
@@ -224,7 +238,7 @@ export function VotingManagePage() {
         </Card>
       ) : null}
 
-      <Card>
+      <Card className="print:hidden">
         <CardHeader>
           <CardTitle>投票データを削除する</CardTitle>
           <CardDescription>

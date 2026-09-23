@@ -122,7 +122,7 @@ export function DetailTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 print:hidden">
         <label className="flex items-center gap-2">
           絞り込み
           <select
@@ -152,7 +152,7 @@ export function DetailTable({
         <p className="text-sm text-slate-500">条件に当てはまる社員はいません。</p>
       )}
 
-      <div className="hidden md:block">
+      <div className="hidden md:block print:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -186,7 +186,7 @@ export function DetailTable({
         </Table>
       </div>
 
-      <ul className="flex flex-col gap-3 md:hidden">
+      <ul className="flex flex-col gap-3 md:hidden print:hidden">
         {rows.map((row) => (
           <li key={row.employeeIndex}>
             <Card

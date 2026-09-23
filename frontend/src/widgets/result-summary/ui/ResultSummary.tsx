@@ -49,7 +49,7 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:grid-cols-4 print:gap-2">
         <Card>
           <CardHeader>
             <CardDescription>マッチ数 / 全社員</CardDescription>
@@ -109,7 +109,7 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
         <Card>
           <CardHeader>
             <CardTitle>希望順位の分布</CardTitle>
-            <CardDescription>
+            <CardDescription className="print:hidden">
               社員が第何希望の部署に配属されたか（または未配属か）の内訳です。第2希望以下・未配属の段を選ぶと、フォロー推奨の一覧へ移動します。
             </CardDescription>
           </CardHeader>
@@ -160,7 +160,7 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
         <CardHeader>
           <CardTitle>性質レポート</CardTitle>
           <CardDescription>
-            実行結果が満たす理論的性質の一覧です。各項目は入力データに対してアルゴリズムが保証する範囲を示すもので、入力データ自体の正確性・網羅性は保証しません（ホバー・フォーカスで詳細を表示）。
+            実行結果が満たす理論的性質の一覧です。各項目は入力データに対してアルゴリズムが保証する範囲を示すもので、入力データ自体の正確性・網羅性は保証しません<span className="print:hidden">（ホバー・フォーカスで詳細を表示）</span>。
           </CardDescription>
         </CardHeader>
         <CardContent>

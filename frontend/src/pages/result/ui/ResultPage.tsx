@@ -9,6 +9,7 @@ import {
   useMatchingResultStore,
 } from "../../../entities/matching";
 import { ExportMenu } from "../../../features/export-result";
+import { PrintReportButton, PrintReportHeader } from "../../../features/print-report";
 import { useRunMatching } from "../../../features/run-matching";
 import { ShareLinkButton } from "../../../features/share-link";
 import { ROUTES } from "../../../shared/config";
@@ -18,6 +19,13 @@ import { EmployeeExplanation } from "../../../widgets/employee-explanation";
 import type { DistributionTarget } from "../../../widgets/result-summary";
 import { FollowUpList, ResultSummary } from "../../../widgets/result-summary";
 import { StepPlayer } from "../../../widgets/step-player";
+
+/** 印刷用レポートの見出しに表示するアルゴリズム名。 */
+const ALGORITHM_LABELS: Record<string, string> = {
+  da: "DA（受入保留方式）",
+  fda: "FDA（柔軟な受入保留方式）",
+  ca: "CA（カットオフ調整）",
+};
 
 /**
  * 結果画面。
@@ -34,6 +42,9 @@ import { StepPlayer } from "../../../widgets/step-player";
  *
  * 希望順位・説明文の算出には、結果と一緒に保持した「実行時の入力」を使う
  * （入力ストアは実行後も編集できるため）。保持がない場合のみ入力ストアで代替する。
+ *
+ * 「印刷用レポート」はブラウザの印刷で A4 縦のレポートを出力する。印刷時は操作 UI を隠し、
+ * 見出し（出力日時・アルゴリズム・規模）を加える。説明パネルは社員を選んでいる場合のみ印刷する。
  */
 export function ResultPage() {
   const result = useMatchingResultStore((state) => state.result);
@@ -116,15 +127,23 @@ export function ResultPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6 print:max-w-none print:gap-5 print:p-0">
+      <PrintReportHeader
+        title="マッチング結果レポート"
+        meta={[
+          `アルゴリズム: ${ALGORITHM_LABELS[result.algorithm] ?? result.algorithm}`,
+          `規模: 社員 ${result.employee_names.length} 名・部署 ${result.department_names.length} 部署`,
+        ]}
+      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">マッチング結果</h1>
           <p className="mt-1 text-sm text-slate-500">
             サマリー・配属マップ・詳細テーブルで結果を確認できます。
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <PrintReportButton />
           <Button type="button" variant="outline" onClick={() => openReplay(null)}>
             実行過程を見る
           </Button>
@@ -159,10 +178,10 @@ export function ResultPage() {
 
       <div>
         <h2 className="text-lg font-semibold text-slate-900">詳細</h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-slate-500 print:hidden">
           社員名を選ぶと、その社員の配属の経緯（受け入れられなかった理由を含む）を表示します。
         </p>
-        <div className="mt-3 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <div className="mt-3 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] print:block">
           <DetailTable
             result={result}
             proposerPrefs={input.proposer_prefs}
@@ -170,7 +189,10 @@ export function ResultPage() {
             onSelectEmployee={handleSelectEmployee}
             followUpThreshold={followUpThreshold}
           />
-          <div ref={explanationRef} className="scroll-mt-6 lg:sticky lg:top-6 lg:self-start">
+          <div
+            ref={explanationRef}
+            className={`scroll-mt-6 lg:sticky lg:top-6 lg:self-start print:mt-5 ${selectedEmployeeIndex === null ? "print:hidden" : ""}`}
+          >
             <EmployeeExplanation
               result={result}
               prefs={input}
