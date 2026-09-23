@@ -1,4 +1,11 @@
+import { useState } from "react";
+
 import type { MatchingResult } from "../../../entities/matching";
+import {
+  compareByDistanceFromPreference,
+  DEFAULT_FOLLOW_UP_THRESHOLD,
+  isFollowUpTarget,
+} from "../../../entities/matching";
 import {
   Badge,
   Card,
@@ -21,7 +28,37 @@ export interface DetailTableProps {
   selectedEmployeeIndex?: number | null;
   /** 社員を選んだときのハンドラ。指定時は社員名をクリック可能にする。 */
   onSelectEmployee?: (employeeIndex: number) => void;
+  /** 「第 N 希望以下」の絞り込みに使うしきい値（既定: フォロー推奨の既定値）。 */
+  followUpThreshold?: number;
 }
+
+type RowFilter = "all" | "followUp" | "unmatched";
+type RowSort = "employee" | "rankDesc";
+
+/** 絞り込み・並べ替えを適用する。未配属・希望外は「希望から最も遠い」として扱う。 */
+function applyFilterAndSort(
+  rows: readonly EmployeeAssignmentRow[],
+  filter: RowFilter,
+  sort: RowSort,
+  threshold: number,
+): EmployeeAssignmentRow[] {
+  const filtered = rows.filter((row) => {
+    if (filter === "unmatched") {
+      return row.departmentIndex === null;
+    }
+    if (filter === "followUp") {
+      return isFollowUpTarget(row, threshold);
+    }
+    return true;
+  });
+  if (sort === "employee") {
+    return filtered;
+  }
+  return [...filtered].sort(compareByDistanceFromPreference);
+}
+
+const SELECT_CLASS =
+  "h-9 rounded-control border border-slate-300 bg-white px-2 text-sm text-slate-900";
 
 function AssignmentCell({ row }: { row: EmployeeAssignmentRow }) {
   if (row.departmentName === null) {
@@ -65,18 +102,57 @@ function EmployeeNameCell({
  * 詳細テーブル。
  * デスクトップでは表形式、モバイル（`md` 未満）ではカードリストに切り替える。
  * `onSelectEmployee` を渡すと社員名から社員を選択できる（結果画面の説明パネル用）。
+ * 「第 N 希望以下のみ」「未配属のみ」の絞り込みと、希望順位（希望から遠い順）での並べ替えができる。
  */
 export function DetailTable({
   result,
   proposerPrefs,
   selectedEmployeeIndex = null,
   onSelectEmployee,
+  followUpThreshold = DEFAULT_FOLLOW_UP_THRESHOLD,
 }: DetailTableProps) {
-  const rows = buildEmployeeAssignmentRows(result, proposerPrefs);
+  const [filter, setFilter] = useState<RowFilter>("all");
+  const [sort, setSort] = useState<RowSort>("employee");
+  const rows = applyFilterAndSort(
+    buildEmployeeAssignmentRows(result, proposerPrefs),
+    filter,
+    sort,
+    followUpThreshold,
+  );
 
   return (
-    <>
-      <div className="hidden md:block">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 print:hidden">
+        <label className="flex items-center gap-2">
+          絞り込み
+          <select
+            value={filter}
+            onChange={(event) => setFilter(event.target.value as RowFilter)}
+            className={SELECT_CLASS}
+          >
+            <option value="all">すべて</option>
+            <option value="followUp">第{followUpThreshold}希望以下・未配属</option>
+            <option value="unmatched">未配属のみ</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2">
+          並べ替え
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value as RowSort)}
+            className={SELECT_CLASS}
+          >
+            <option value="employee">社員順</option>
+            <option value="rankDesc">希望順位（希望から遠い順）</option>
+          </select>
+        </label>
+        <span className="text-xs text-slate-400">{rows.length}名</span>
+      </div>
+      {rows.length === 0 && (
+        <p className="text-sm text-slate-500">条件に当てはまる社員はいません。</p>
+      )}
+
+      <div className="hidden md:block print:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -110,7 +186,7 @@ export function DetailTable({
         </Table>
       </div>
 
-      <ul className="flex flex-col gap-3 md:hidden">
+      <ul className="flex flex-col gap-3 md:hidden print:hidden">
         {rows.map((row) => (
           <li key={row.employeeIndex}>
             <Card
@@ -135,6 +211,6 @@ export function DetailTable({
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }

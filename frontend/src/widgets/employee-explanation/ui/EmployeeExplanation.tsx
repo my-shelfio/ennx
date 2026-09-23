@@ -74,7 +74,7 @@ export function EmployeeExplanation({
           </ul>
         )}
 
-        <details className="text-sm">
+        <details className="text-sm print:hidden">
           <summary className="cursor-pointer font-medium text-primary-700">
             経緯をすべて表示（{journey.steps.length} ステップ）
           </summary>
@@ -102,7 +102,7 @@ export function EmployeeExplanation({
             type="button"
             variant="outline"
             size="sm"
-            className="self-start"
+            className="self-start print:hidden"
             onClick={() => onReplay(journey.employee)}
           >
             この社員の過程をステップ再生で見る

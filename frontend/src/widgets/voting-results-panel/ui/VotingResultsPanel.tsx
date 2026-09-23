@@ -50,7 +50,7 @@ export function VotingResultsPanel({ results }: VotingResultsPanelProps) {
           <CardTitle>{winnerLabels(results.primary, results.options)}</CardTitle>
           <CardDescription>投票数: {results.ballot_count}件</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="print:hidden">
           <ExportVotingResultsMenu results={results} />
         </CardContent>
       </Card>
@@ -128,7 +128,7 @@ export function VotingResultsPanel({ results }: VotingResultsPanelProps) {
         <CardHeader>
           <CardTitle>性質レポート</CardTitle>
           <CardDescription>
-            コンドルセ勝者の有無・多数決の逆理・方式間での勝者の入れ替わり・戦略的操作への耐性の注記です(ホバー・フォーカスで詳細を表示)。
+            コンドルセ勝者の有無・多数決の逆理・方式間での勝者の入れ替わり・戦略的操作への耐性の注記です<span className="print:hidden">(ホバー・フォーカスで詳細を表示)</span>。
           </CardDescription>
         </CardHeader>
         <CardContent>

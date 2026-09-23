@@ -93,7 +93,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         </AnimatePresence>
         <ToastPrimitive.Viewport
           className={cn(
-            "fixed bottom-0 right-0 z-50 m-0 flex w-96 max-w-[100vw] list-none flex-col gap-2 p-6",
+            "fixed bottom-0 right-0 z-50 m-0 flex w-96 max-w-[100vw] list-none flex-col gap-2 p-6 print:hidden",
           )}
         />
       </ToastPrimitive.Provider>
