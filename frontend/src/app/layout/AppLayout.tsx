@@ -25,8 +25,8 @@ export function AppLayout() {
   useAnalyticsTracking();
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="flex min-h-screen flex-col bg-slate-50 print:min-h-0 print:bg-white">
+      <header className="border-b border-slate-200 bg-white print:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2">
             <GlobalNav />
@@ -50,7 +50,7 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="border-t border-slate-200 bg-white print:hidden">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-6 text-center text-xs text-slate-400 sm:px-6">
           <p>
             ennx ── 組織の問題を経済学の理論で可視化し、意思決定を支援する個人開発プロジェクトです。
