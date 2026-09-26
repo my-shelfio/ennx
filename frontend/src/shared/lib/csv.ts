@@ -34,8 +34,9 @@ export function toCsvRow(fields: readonly string[]): string {
  * - 改行は `\r\n` / `\n` / `\r` のいずれも行区切りとして扱う。
  * - 先頭の UTF-8 BOM は除去する。
  * - 全セルが空文字の行（空行）は結果から除外する。
+ * - 区切り文字は既定でカンマ。表計算ソフトからの貼り付け（タブ区切り）にも使えるよう指定できる。
  */
-export function parseCsv(text: string): string[][] {
+export function parseCsv(text: string, delimiter: "," | "\t" = ","): string[][] {
   const source = stripBom(text);
   const rows: string[][] = [];
   let row: string[] = [];
@@ -68,7 +69,7 @@ export function parseCsv(text: string): string[][] {
       continue;
     }
 
-    if (char === ",") {
+    if (char === delimiter) {
       row.push(field);
       field = "";
       index += 1;
