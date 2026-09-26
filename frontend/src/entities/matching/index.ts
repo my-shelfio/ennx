@@ -33,6 +33,7 @@ export {
   fillRemaining,
   fillRemainingAll,
   isMatrixValid,
+  isRowComplete,
   isRowEmpty,
   matrixFromPrefs,
   prefsFromMatrix,

@@ -6,6 +6,8 @@ import {
   fillRemaining,
   fillRemainingAll,
   isMatrixValid,
+  isRowComplete,
+  isRowEmpty,
   prefsFromMatrix,
   randomizeMatrix,
   randomRow,
@@ -51,6 +53,19 @@ describe("fillRemaining", () => {
     ];
     expect(isMatrixValid(matrix)).toBe(false);
     expect(isMatrixValid(fillRemainingAll(matrix))).toBe(true);
+  });
+});
+
+describe("isRowComplete / isRowEmpty", () => {
+  test.each<[RankCell[], boolean, boolean]>([
+    [[null, null], false, true],
+    [[1, null], false, false],
+    [[2, 1], true, false],
+  ])("%j: complete=%s, empty=%s", (row, complete, empty) => {
+    expect(isRowComplete(row)).toBe(complete);
+    expect(isRowEmpty(row)).toBe(empty);
+    // 補完後は常に complete になる
+    expect(isRowComplete(fillRemaining(row))).toBe(true);
   });
 });
 

@@ -244,6 +244,11 @@ export function isRowEmpty(row: readonly RankCell[]): boolean {
   return row.every((cell) => cell === null);
 }
 
+/** 行の全セルが入力済み（未入力の相手が残っていない）かどうか。 */
+export function isRowComplete(row: readonly RankCell[]): boolean {
+  return row.every((cell) => cell !== null);
+}
+
 /** 行列の全行に fillRemaining を適用した新しい行列を返す（「残りを自動補完（全行）」）。 */
 export function fillRemainingAll(matrix: RankMatrix): RankMatrix {
   return matrix.map((row) => fillRemaining(row));
