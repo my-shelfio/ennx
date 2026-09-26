@@ -2,7 +2,9 @@ import type { MatchingEvent, MatchingStepSnapshot } from "../../../entities/matc
 
 /**
  * イベント種別フィルタ。`"all"` は全種別を対象とする（フィルタなし）。
- * 値は docs/event-schema.md の `EventType` と対応する。
+ * 各値はマッチングアルゴリズムのイベントログにおける種別を表す:
+ * `propose`=提案、`tentative_accept`=仮受入、`reject`=棄却、`waitlist`=待機、
+ * `promote`=繰り上げ、`cutoff_raise`=カットオフ引き上げ。
  */
 export type EventTypeFilter =
   | "all"

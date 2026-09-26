@@ -13,8 +13,8 @@ const TERMS_OF_SERVICE_URL = "https://system-solution-developers.github.io/Docum
  * 全ページ共通のレイアウト（ヘッダー・フッター）。
  * 各ページは <Outlet /> の位置に描画される。
  * ヘッダー左側にグローバルナビ（widgets/global-nav）のハンバーガーボタンを常設し、
- * 将来の複数モジュール化（情報共有・インセンティブ設計）に備えたドロワーメニューへの
- * 導線とする（#114）。
+ * 複数モジュール構成（配属マッチング・割り当て・投票・合意形成、および今後追加する
+ * モジュール）に対応したドロワーメニューへの導線とする。
  * ヘッダーの「入力データをクリア」ボタンは、共有端末利用後に入力データを
  * 消去できる導線を UI に常設するため、特定ページではなく全ページ共通のここに配置する。
  * フッターには免責文言と利用規約・プライバシーポリシーへの
@@ -25,8 +25,8 @@ export function AppLayout() {
   useAnalyticsTracking();
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="flex min-h-screen flex-col bg-slate-50 print:min-h-0 print:bg-white">
+      <header className="border-b border-slate-200 bg-white print:hidden">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2">
             <GlobalNav />
@@ -50,7 +50,7 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="border-t border-slate-200 bg-white print:hidden">
         <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-6 text-center text-xs text-slate-400 sm:px-6">
           <p>
             ennx ── 組織の問題を経済学の理論で可視化し、意思決定を支援する個人開発プロジェクトです。

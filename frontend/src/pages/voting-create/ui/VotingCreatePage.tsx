@@ -63,7 +63,7 @@ export function VotingCreatePage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">情報共有(投票・合意形成)</h1>
+        <h1 className="text-2xl font-bold text-slate-900">投票・合意形成</h1>
         <p className="mt-1 text-sm text-slate-500">
           複数案から1つを選ぶ意思決定を、投票ルールごとの結果と性質つきで可視化します。
         </p>

@@ -1,0 +1,84 @@
+name: 機能改修・改善
+description: 新機能の追加、既存機能の変更・削除・リファクタリング
+title: "【feat/chore】"
+labels: []
+body:
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: 依存・ブロック
+      description: >-
+        依存するイシュー（このイシューの前提となるもの）・ブロックするイシュー（このイシューが完了しないと
+        着手できないもの）があれば記載する。なければ「依存: なし」「ブロック: なし」と記載する。
+      value: |
+        依存: なし
+        ブロック: なし
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景・目的
+      description: >-
+        何をするか・なぜするかを記載する。ユーザー課題・技術的負債・UX改善など、このイシューが
+        必要な理由を含める。
+    validations:
+      required: true
+  - type: textarea
+    id: current-impl
+    attributes:
+      label: 現状の実装（調査結果）
+      description: 関連する既存実装を調査し、該当ファイル・処理内容を列挙する。
+      value: |
+        - `path/to/file.py` — 役割の説明
+    validations:
+      required: false
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影響範囲
+      value: |
+        ### 変更が必要
+
+        - `path/to/file.py` — 何をどう変更するか
+
+        ### 新規作成が必要
+
+        -
+
+        ### 削除候補
+
+        -
+
+        ### 影響を受けないもの（確認済み）
+
+        - 変更不要と判断した箇所とその理由
+    validations:
+      required: false
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 作業内容（タスク分解）
+      value: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: 未確定事項（要確認）
+      description: 実装前に確認・決定が必要な設計判断があれば記載する（なければ「なし」と記載する）。
+      value: |
+        - なし
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true

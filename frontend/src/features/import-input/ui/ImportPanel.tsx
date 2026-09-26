@@ -38,7 +38,7 @@ async function readFiles(fileList: FileList): Promise<RawImportFile[]> {
 
 /**
  * CSV一括インポートのパネル（ファイル選択 → 検証 → プレビュー → 確定）。
- * テンプレートのダウンロードもここに配置する（#123）。
+ * テンプレートのダウンロードもここに配置する。
  */
 export function ImportPanel({ mode, onImported }: ImportPanelProps) {
   const input = useMatchingInputStore((state) => state.input);

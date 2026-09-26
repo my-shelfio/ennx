@@ -15,7 +15,9 @@
 - **安定性**: どの社員・部署のペアも「今の配属を崩して互いに移りたい」と思わない状態のこと。安定なマッチングは事後的に覆される（引き抜き・転属の交渉が起きる）リスクが低いとされます。
 - **耐戦略性（社員側）**: 社員がどんな希望を申告しても、正直な希望順位を申告することが（弱い意味で）最も有利になる性質です。虚偽申告によるゲーミングの誘因を減らします。
 
-このほか、複数案から 1 つを選ぶ場面向けの**投票・合意形成**モジュールを提供します。主催者が案と投票ルール（多数決・ボルダ・承認投票・コンドルセ方式）を設定して匿名参加 URL を配布し、参加者の投票をルール別の集計結果と性質レポートとして可視化します。投票データは完全匿名で、最長 7 日でサーバーから自動削除されます。
+このほか、部署の側で候補者に順位をつけられない配分（席替え・持ち回り当番・案件アサインなど）向けの**割り当て**モジュールを提供します。社員の希望順位だけを受け取り、各社員が各部署に配属される確率（期待割当）と、それを実際に配るためのくじを提示します。確率的な配分のため抽選を伴いますが、抽選に使ったシードを併せて示すので同じ結果を後から再現できます。
+
+さらに、複数案から 1 つを選ぶ場面向けの**投票・合意形成**モジュールを提供します。主催者が案と投票ルール（多数決・ボルダ・承認投票・コンドルセ方式）を設定して匿名参加 URL を配布し、参加者の投票をルール別の集計結果と性質レポートとして可視化します。投票データは完全匿名で、最長 7 日でサーバーから自動削除されます。
 
 ### 参考文献
 
@@ -28,7 +30,7 @@
 
 - バックエンド: Python 3.13 / FastAPI + Pydantic v2 / uvicorn。feature 単位 + Clean Architecture 構成（各 feature が domain / application / presentation / infrastructure の4層を持つ）+ API バージョニング（`/api/v1`）。層依存・feature 間独立を import-linter で CI 強制
 - フロントエンド: Vite + React + TypeScript + Tailwind CSS の SPA（Feature-Sliced Design 構成）。API 型は OpenAPI から openapi-typescript で自動生成
-- 配信構成: 単一サービス。Docker multi-stage で SPA をビルドし、FastAPI（uvicorn）が API と SPA を同一オリジンで配信する（本番・開発を別サービスとして分離、[#55](https://github.com/my-shelfio/ennx/issues/55)）
+- 配信構成: 単一サービス。Docker multi-stage で SPA をビルドし、FastAPI（uvicorn）が API と SPA を同一オリジンで配信する（本番・開発を別サービスとして分離、[#20](https://github.com/my-shelfio/ennx/issues/20)）
 - 状態保持: マッチング API はステートレスで、入力・結果はクライアント側（localStorage）に保持する。投票（voting）機能のみ Neon PostgreSQL（SQLAlchemy Core + psycopg）に匿名・期限付き（最長 7 日）で保存する
 
 本番実行時依存は最小限に保ちます（低コスト運用・依存最小化の方針）。
@@ -68,7 +70,9 @@ cd frontend && npm run dev
 
 `http://127.0.0.1:5173/` で起動します。CORS は未設定（API・SPA は同一オリジン運用が前提）のため、この方法では API 呼び出しが失敗します。レイアウト・スタイルなど見た目のみを素早く確認したい場合に使い、API 連携を含む動作確認は a. を使ってください。
 
-画面の流れは「設定（部署数・社員数・制約種別・定員）→ 選好順位入力（社員側・部署側）→ 結果表示（配属・性質レポート・実行過程の可視化）」です。トップページの「サンプルデータで試す」から、研修医マッチング風のサンプル（研修医 6 名・病院 3 施設）で一連の流れをすぐに試せます。トップページからは投票・合意形成（投票の作成 → 匿名参加 URL の配布 → 集計結果の確認）も利用できます（ローカルで投票機能を使う場合は環境変数 `DATABASE_URL` に PostgreSQL の接続文字列を設定してください。未設定の場合、投票 API は 503 を返します）。
+トップページは各モジュールの入口をまとめたポータルで、カードから各モジュールの導入ページ（`/matching`・`/assignment`・`/voting`）へ進み、そこから実行画面に入ります。グローバルナビからは実行画面へ直行できます。
+
+配属マッチングの画面の流れは「設定（部署数・社員数・制約種別・定員）→ 選好順位入力（社員側・部署側）→ 結果表示（配属・性質レポート・実行過程の可視化）」です。導入ページの「サンプルデータで試す」から、研修医マッチング風のサンプル（研修医 6 名・病院 3 施設）で一連の流れをすぐに試せます。割り当て（受け入れ人数と希望順位の入力 → 実行 → 期待割当・抽選結果の確認）も導入ページの「サンプルデータで試す」から同様に試せます。投票・合意形成（投票の作成 → 匿名参加 URL の配布 → 集計結果の確認）は複数人の参加が前提のためサンプルを設けておらず、導入ページから投票の作成に進みます（ローカルで投票機能を使う場合は環境変数 `DATABASE_URL` に PostgreSQL の接続文字列を設定してください。未設定の場合、投票 API は 503 を返します）。
 
 ## 品質チェック（lint / 型 / テスト）
 
@@ -119,7 +123,7 @@ docker run --rm -e PORT=9000 -p 9000:9000 ennx
 
 ## デプロイ手順（Render）
 
-本番と開発を別サービスとして [Render](https://render.com/) の Free プランで運用します（[#55](https://github.com/my-shelfio/ennx/issues/55)）。リポジトリ直下の [`render.yaml`](render.yaml)（Render Blueprint 定義）に、両サービスの構成を Infrastructure as Code としてまとめています。
+本番と開発を別サービスとして [Render](https://render.com/) の Free プランで運用します（[#20](https://github.com/my-shelfio/ennx/issues/20)）。リポジトリ直下の [`render.yaml`](render.yaml)（Render Blueprint 定義）に、両サービスの構成を Infrastructure as Code としてまとめています。
 
 | 環境 | サービス名 | 追従ブランチ | デプロイトリガー                  | URL（例）                       |
 | ---- | ---------- | ------------ | --------------------------------- | ------------------------------- |
@@ -146,8 +150,8 @@ docker run --rm -e PORT=9000 -p 9000:9000 ennx
 各環境の URL に対して以下を確認します。
 
 - `/healthz` が `200 ok` を返すこと
-- 「ホーム →（サンプルデータで試す、または）設定ウィザード → 選好順位入力 → 結果表示（「実行過程を見る」でのステップ再生を含む）」の一連の画面遷移が実際のブラウザで完了すること
-- レスポンスヘッダに `Content-Security-Policy` / `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy` / `Strict-Transport-Security` が付与されていること（`backend/src/shared/presentation/security.py`、#81 のセキュリティ最低限対応。API はステートレスのため Cookie は発行しない）
+- 「ホーム → 配属マッチングの導入ページ →（サンプルデータで試す、または）設定ウィザード → 選好順位入力 → 結果表示（「実行過程を見る」でのステップ再生を含む）」の一連の画面遷移が実際のブラウザで完了すること
+- レスポンスヘッダに `Content-Security-Policy` / `X-Content-Type-Options` / `X-Frame-Options` / `Referrer-Policy` / `Permissions-Policy` / `Strict-Transport-Security` が付与されていること（`backend/src/shared/presentation/security.py`、#35 のセキュリティ最低限対応。API はステートレスのため Cookie は発行しない）
 
 Free プランはアクセスが一定時間ないとスリープし、次回アクセス時にコールドスタートが発生します（低コスト運用上のトレードオフとして許容しています）。
 
@@ -160,26 +164,27 @@ backend/
   src/
     api/
       v1/               # API バージョン集約層。feature のルータを /api/v1 prefix で集約
-    features/           # 機能単位（matching / voting）。各 feature が以下の4層を持つ
+    features/           # 機能単位（matching / assignment / voting）。各 feature が以下の4層を持つ
       matching/
         domain/         # 最内層。マッチングアルゴリズム（DA/FDA/CA）等の純粋関数のみ
         application/    # ユースケースと DTO
         presentation/   # FastAPI ルータ（バージョン非依存）・Pydantic スキーマ・エラーハンドラ
         infrastructure/ # （マッチングは外部依存なし）
+      assignment/       # 割り当て（片側選好）。domain = PS ＋ 一般化 BvN 分解の純粋関数
       voting/           # 投票・合意形成（infrastructure = Neon PostgreSQL 実装）
     shared/             # feature 横断（性質レポート・エラー基底・SPA 配信・セキュリティヘッダ）
     main.py             # アプリケーションファクトリ（合成ルート）
   tests/                # バックエンドのテスト（feature ミラー構成。
-                        #   features/matching/domain/test_properties.py = プロパティテスト）
+                        #   features/*/domain/ のプロパティテストと契約テストを含む）
   scripts/              # OpenAPI スキーマ出力等
 frontend/
   src/                  # React SPA（FSD: app / pages / widgets / features / entities / shared）
-  e2e/                  # E2E スモークテスト（Playwright、#82）
+  e2e/                  # E2E スモークテスト（Playwright、#43）
 docs/
   system-spec.md        # システム仕様書
-  event-schema.md       # イベントログ（ステップログ）の共通スキーマ
+  event-schema.md       # イベントログ（ステップログ）のスキーマ（matching / assignment）
 render.yaml             # Render Blueprint 定義（本番・開発 2 サービスの構成）
 Dockerfile              # 本番用イメージ（multi-stage: SPA ビルド → uvicorn 起動）
 ```
 
-マッチングアルゴリズムは他層から独立した純粋関数として `backend/src/features/matching/domain/` に実装します。開発フロー・ブランチ運用は [CLAUDE.md](CLAUDE.md) と `.claude/rules/` を参照してください。
+マッチング・割り当てのアルゴリズムは他層から独立した純粋関数として `backend/src/features/matching/domain/`・`backend/src/features/assignment/domain/` に実装します。開発フロー・ブランチ運用は [CLAUDE.md](CLAUDE.md) と `.claude/rules/` を参照してください。

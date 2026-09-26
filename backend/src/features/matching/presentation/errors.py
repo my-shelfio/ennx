@@ -5,7 +5,10 @@ from __future__ import annotations
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from features.matching.application.errors import InvalidMatchingInputError
+from features.matching.application.errors import (
+    InvalidMatchingInputError,
+    SampleNotFoundError,
+)
 from shared.presentation.errors import build_problem_response
 from shared.presentation.schemas import FieldErrorSchema
 
@@ -23,4 +26,14 @@ def register_matching_error_handlers(app: FastAPI) -> None:
             title="入力が不正です",
             detail="マッチング入力の検証でエラーが見つかりました。",
             errors=[FieldErrorSchema(field=e.field, message=e.message) for e in exc.errors],
+        )
+
+    @app.exception_handler(SampleNotFoundError)
+    async def handle_sample_not_found(_request: Request, exc: SampleNotFoundError) -> JSONResponse:
+        """未知のサンプルキーを 404 に変換する。"""
+        return build_problem_response(
+            status_code=status.HTTP_404_NOT_FOUND,
+            title="サンプルが見つかりません",
+            detail=str(exc),
+            errors=[],
         )

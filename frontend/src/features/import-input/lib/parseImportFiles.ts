@@ -58,7 +58,7 @@ function checkNameListsMatch(
  *
  * ファイル名で役割を判定し（大文字小文字は区別しない）、部署名・社員名は
  * ファイル間で完全一致（件数・並び順とも）することを要求する（不一致は取込をブロックする）。
- * 順位の重複・範囲外・空欄行は取込をブロックしない（#123: 取り込んだ上で行列UIから修正できる）。
+ * 順位の重複・範囲外・空欄行は取込をブロックしない（取り込んだ上で行列UIから修正できる）。
  */
 export function parseImportFiles(
   files: readonly RawImportFile[],

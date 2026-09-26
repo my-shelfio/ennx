@@ -1,12 +1,26 @@
+import { useState } from "react";
+
 import type { MatchingResult } from "../../../entities/matching";
 import { normalizeBlockingPairs } from "../../../entities/matching";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../shared/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../../../shared/ui";
 import { buildDepartmentAssignments, rankOfDepartmentForEmployee } from "../lib/assignment";
+
+import { DepartmentDetail } from "./DepartmentDetail";
 
 export interface AssignmentMapProps {
   result: MatchingResult;
   /** 実行に使った選好リスト（社員→部署、1-indexed）。チップのホバー表示に使う。 */
   proposerPrefs: readonly (readonly number[])[];
+  /** 実行に使った選好リスト（部署→社員、1-indexed）。部署詳細ビューの優先順位に使う。 */
+  receiverPrefs: readonly (readonly number[])[];
 }
 
 function rankLabel(rank: number | null): string {
@@ -42,25 +56,28 @@ function buildBlockingDepartmentNames(result: MatchingResult): Map<number, strin
  * その社員の希望順位を表示する。未配属者がいる場合は末尾に明示する。
  * 安定性・弱安定性が違反の場合、ブロッキングペアに関与する社員のチップを
  * 枠線でハイライトし、ツールチップに相手部署を明記する（数字併記でアクセシビリティに配慮）。
+ * 各部署カードの「受入・棄却の内訳」から、その部署を希望した社員の受入・棄却（理由つき）と
+ * カットオフ（CA のみ）を示す部署詳細ビューを開ける。
  */
-export function AssignmentMap({ result, proposerPrefs }: AssignmentMapProps) {
+export function AssignmentMap({ result, proposerPrefs, receiverPrefs }: AssignmentMapProps) {
   const departments = buildDepartmentAssignments(result);
+  const [detailDepartment, setDetailDepartment] = useState<number | null>(null);
   const blockingDepartmentNames = buildBlockingDepartmentNames(result);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 print:grid-cols-3">
         {departments.map((department) => {
           const fillPercent = Math.min(100, Math.round(department.fillRate * 100));
           return (
-            <Card key={department.departmentIndex}>
+            <Card key={department.departmentIndex} className="flex flex-col">
               <CardHeader>
                 <CardTitle>{department.name}</CardTitle>
                 <CardDescription>
                   {department.assignedEmployeeIndices.length} / {department.capacity} 名
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col gap-3">
+              <CardContent className="flex flex-1 flex-col gap-3">
                 <div
                   role="progressbar"
                   aria-label={`${department.name}の定員充足率`}
@@ -114,6 +131,17 @@ export function AssignmentMap({ result, proposerPrefs }: AssignmentMapProps) {
                   })}
                 </ul>
               </CardContent>
+              <CardFooter className="print:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  aria-haspopup="dialog"
+                  onClick={() => setDetailDepartment(department.departmentIndex)}
+                >
+                  受入・棄却の内訳
+                </Button>
+              </CardFooter>
             </Card>
           );
         })}
@@ -131,6 +159,14 @@ export function AssignmentMap({ result, proposerPrefs }: AssignmentMapProps) {
           </CardHeader>
         </Card>
       ) : null}
+
+      <DepartmentDetail
+        result={result}
+        proposerPrefs={proposerPrefs}
+        receiverPrefs={receiverPrefs}
+        department={detailDepartment}
+        onClose={() => setDetailDepartment(null)}
+      />
     </div>
   );
 }

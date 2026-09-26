@@ -1,0 +1,27 @@
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+  categories:
+    - title: 👍 機能改修
+      labels:
+        - feature
+        - ui-ux
+    - title: 🐛 不具合修正
+      labels:
+        - bug
+    - title: 🔄 改善
+      labels:
+        - setup
+        - ci
+        - infra
+        - test
+        - nice-to-have
+    - title: 📖 ドキュメント
+      labels:
+        - docs
+    - title: その他の変更
+      labels:
+        - "*"

@@ -1,6 +1,6 @@
 [project]
 name = "ennx"
-version = "0.1.0"
+version = "0.2.0"
 description = "企業の問題を経済学を応用して可視化する Web アプリ（MVP）"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
@@ -47,8 +47,11 @@ dev = [
     "hypothesis>=6",
     # 層依存契約の機械的検証。CI・pre-commit で lint-imports を実行する。
     "import-linter>=2",
-    # FastAPI TestClient の実行時依存（API テスト用）。
-    "httpx>=0.27",
+    # FastAPI TestClient の実行時依存（API テスト用）。starlette の testclient は
+    # httpx2 を優先し、httpx にフォールバックした場合は非推奨警告を出す。将来
+    # フォールバックが外れると TestClient を使う API テストが一斉に落ちるため、
+    # httpx ではなく httpx2 を採用する。
+    "httpx2>=2.12.0",
 ]
 
 # --- Lint / Format（ruff） ---
@@ -85,9 +88,10 @@ root_packages = ["api", "features", "shared"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
-name = "features は互いに独立している（matching ⇔ voting）"
+name = "features は互いに独立している（assignment ⇔ matching ⇔ voting）"
 type = "independence"
 modules = [
+    "features.assignment",
     "features.matching",
     "features.voting",
 ]
@@ -101,6 +105,7 @@ layers = [
     "domain",
 ]
 containers = [
+    "features.assignment",
     "features.matching",
     "features.voting",
 ]
@@ -109,6 +114,7 @@ containers = [
 name = "application 層は Web フレームワークに依存しない"
 type = "forbidden"
 source_modules = [
+    "features.assignment.application",
     "features.matching.application",
     "features.voting.application",
     "shared.application",
@@ -137,6 +143,9 @@ name = "api は各 feature の presentation 層のみに直接依存する"
 type = "forbidden"
 source_modules = ["api"]
 forbidden_modules = [
+    "features.assignment.domain",
+    "features.assignment.application",
+    "features.assignment.infrastructure",
     "features.matching.domain",
     "features.matching.application",
     "features.matching.infrastructure",

@@ -20,6 +20,7 @@ from features.matching.application.dto.results import (
     MatchingOutcome,
     ValidationOutcome,
 )
+from features.matching.application.usecases.get_sample import SampleDefinition
 from shared.presentation.schemas import FieldErrorSchema, ReportItemSchema
 
 # 入力上限（性能計測で確定するまでの目安値）。
@@ -289,3 +290,30 @@ class CaConstraintMetaListResponse(BaseModel):
     ca_constraint_types: list[CaConstraintMetaSchema] = Field(
         description="登録済みの CA 追加制約種別（登録順）"
     )
+
+
+class SampleSummarySchema(BaseModel):
+    """サンプル 1 件の表示用メタ情報（入力本体は `GET /api/v1/sample?key=` で取得する）。"""
+
+    key: str = Field(description="サンプルの識別キー（`GET /api/v1/sample` の key に指定する）")
+    label: str = Field(description="表示名")
+    summary: str = Field(description="このサンプルで確認できる現象の概要")
+    constraint_type: str = Field(
+        description="制約種別キー（capacity_only / regional_cap / general）"
+    )
+
+    @classmethod
+    def from_dto(cls, dto: SampleDefinition) -> SampleSummarySchema:
+        """application 層のサンプル定義から変換する。"""
+        return cls(
+            key=dto.key,
+            label=dto.label,
+            summary=dto.summary,
+            constraint_type=dto.request.constraint_type,
+        )
+
+
+class SampleListResponse(BaseModel):
+    """サンプル一覧（先頭が既定サンプル）。"""
+
+    samples: list[SampleSummarySchema]

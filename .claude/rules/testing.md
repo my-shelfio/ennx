@@ -14,14 +14,14 @@ paths:
 
 ## 仕組みで守る（テストを書かない）
 
-| 守りたい性質                 | 仕組み                                                                | 実行タイミング  |
-| ---------------------------- | --------------------------------------------------------------------- | --------------- |
+| 守りたい性質                                             | 仕組み                                                                | 実行タイミング  |
+| -------------------------------------------------------- | --------------------------------------------------------------------- | --------------- |
 | 層依存の方向（backend: feature 内 4 層・feature 間独立） | import-linter（pyproject.toml の契約）                                | 品質ゲート / CI |
-| 層依存の方向（frontend FSD） | eslint-plugin-boundaries + steiger                                    | 品質ゲート / CI |
-| 型の整合性                   | mypy strict / tsc                                                     | 品質ゲート / CI |
-| API 型のフロント・バック乖離 | CI が export_openapi.py → gen:api-types を再実行し tsc / build で検出 | CI              |
-| コードスタイル               | ruff / eslint                                                         | 品質ゲート / CI |
-| UI の描画・見た目            | 手動確認 + E2E スモーク1本（#82、サンプル読込→実行→結果表示）         | CI / リリース前 |
+| 層依存の方向（frontend FSD）                             | eslint-plugin-boundaries + steiger                                    | 品質ゲート / CI |
+| 型の整合性                                               | mypy strict / tsc                                                     | 品質ゲート / CI |
+| API 型のフロント・バック乖離                             | CI が export_openapi.py → gen:api-types を再実行し tsc / build で検出 | CI              |
+| コードスタイル                                           | ruff / eslint                                                         | 品質ゲート / CI |
+| UI の描画・見た目                                        | 手動確認 + E2E スモーク1本（#43、サンプル読込→実行→結果表示）         | CI / リリース前 |
 
 上記でカバーされる性質のテスト（層独立性テスト、UI コンポーネントの描画テスト、
 ストアの自明な set/get テスト、個別エンドポイントの疎通テスト等）は**新規に書かない**。
@@ -33,16 +33,16 @@ paths:
 
 1. **移植は「移植元と同一結果」のフィクスチャテストを必須とする**。移植元の実行例（*_exec.py 相当）について、事前に実行・記録した期待値との一致を assert する（代表ケースに絞ってよい）
 2. **バグ修正は最小反例の回帰テストを必須とする**。反例は提案者2〜3人・受入者1〜2程度まで縮小してテストにハードコードし、docstring にイシュー番号と発生メカニズムを記す
-3. **アルゴリズムの追加・変更時は理論的性質のプロパティテストを維持・追加する**（backend/tests/features/matching/domain/test_properties.py、slow マーカー）。最低限: 個人合理性・定員遵守。アルゴリズム固有: DA=安定性、FDA=地域上限の充足、CA=制約充足と公平性。投票（voting）の集計ルール・性質レポートの正しさも同様にドメインのテスト（`backend/tests/features/voting/domain/`、プロパティテスト含む）で守る
-4. **イベントログの再構成一致はプロパティテスト内で保証する**。`reconstruct_matching` の結果が最終マッチングと一致することを検証する（独立した固定例テストは不要）
-5. **契約テストを維持する**。`test_event_contract.py`（docs/event-schema.md との一致）と `test_openapi.py`（スキーマ出力）はフロントとの API 契約の最終防衛線であり削除しない
-6. **frontend は lib（純粋ロジック）の境界と門番のみテストする**。代表例: `entities/matching/lib/parseEvents`（イベントログを解釈する境界）、`widgets/setup-wizard/lib/validation`・`entities/voting/lib/validation`（ユーザー入力の門番）、エクスポート・共有リンクなどの変換ロジック（`shared/lib/csv`・`features/share-link/lib` 等）。UI コンポーネントの描画・表示ロジックのテストは書かない
+3. **アルゴリズムの追加・変更時は理論的性質のプロパティテストを維持・追加する**（`backend/tests/features/*/domain/` の test_*properties.py、slow マーカー）。マッチングの最低限: 個人合理性・定員遵守。アルゴリズム固有: DA=安定性、FDA=地域上限の充足、CA=制約充足と公平性。割り当て（assignment）は行和 1・供給数の遵守・上限制約の充足に加え、PS が保証する順序効率性・無羨望性・水平性と、くじの分解の妥当性（重み総和 1・再構成一致・全項の制約充足）を検証する。投票（voting）の集計ルール・性質レポートの正しさも同様にドメインのテスト（`backend/tests/features/voting/domain/`、プロパティテスト含む）で守る
+4. **イベントログの再構成一致はプロパティテスト内で保証する**。マッチングは `reconstruct_matching` の結果が最終マッチングと、割り当ては `reconstruct_expected_assignment` の結果が期待割当行列と一致することを検証する（独立した固定例テストは不要）
+5. **契約テストを維持する**。`test_event_contract.py`（docs/event-schema.md との一致。matching・assignment の両スキーマ）と `test_openapi.py`（スキーマ出力）はフロントとの API 契約の最終防衛線であり削除しない
+6. **frontend は lib（純粋ロジック）の境界と門番のみテストする**。代表例: `entities/matching/lib/parseEvents`・`entities/assignment/lib/timeline`（イベントログを解釈する境界）、`entities/assignment/lib/fraction`（API の分数表現を解釈する境界）、`widgets/setup-wizard/lib/validation`・`widgets/assignment-form/lib/validation`・`entities/voting/lib/validation`（ユーザー入力の門番）、エクスポート・共有リンクなどの変換ロジック（`shared/lib/csv`・`features/share-link/lib` 等）。UI コンポーネントの描画・表示ロジックのテストは書かない
 
 ## 根拠
 
-M2 ではプロパティテストが3件の実バグ（定員0クラッシュ、FDA 前提条件不足、地域上限超過 #35）を発見した。固定フィクスチャは「移植の正しさ」を、プロパティテストは「理論との一致」を、回帰テストは「同じバグの再発防止」をそれぞれ担う。3層は代替関係にない。
-一方、型・依存方向・API 型整合は mypy strict / import-linter / eslint-boundaries / CI の型再生成で機械的に守られており、テストの重複投資は管理コストに見合わない（M8 で削減、#96）。
+M2 ではプロパティテストが3件の実バグ（定員0クラッシュ、FDA 前提条件不足、地域上限超過）を発見した。固定フィクスチャは「移植の正しさ」を、プロパティテストは「理論との一致」を、回帰テストは「同じバグの再発防止」をそれぞれ担う。3層は代替関係にない。
+一方、型・依存方向・API 型整合は mypy strict / import-linter / eslint-boundaries / CI の型再生成で機械的に守られており、テストの重複投資は管理コストに見合わない（M8 で削減予定）。
 
-## 実例（#35 の回帰テスト）
+## 実例（地域上限超過バグの回帰テスト）
 
 `test_regional_cap_not_exceeded_after_promotion`: 2提案者・2受入者・地域上限1の最小反例で、繰り上げ後の後続ラウンドが地域上限を超えないことを検証している。

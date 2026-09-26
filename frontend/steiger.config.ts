@@ -6,7 +6,7 @@ import fsd from "@feature-sliced/steiger-plugin";
 export default defineConfig([
   ...fsd.configs.recommended,
   {
-    files: ["src/entities/matching/**"],
+    files: ["src/entities/matching/**", "src/entities/assignment/**"],
     rules: {
       "fsd/insignificant-slice": "off",
     },
@@ -46,9 +46,14 @@ export default defineConfig([
     },
   },
   {
-    // widgets/result-summary・widgets/assignment-map は pages/result からのみ
-    // 参照されるが、widgets/setup-wizard 等と同様に widgets/pages 分離方針に基づく意図的な設計。
-    files: ["src/widgets/result-summary/**", "src/widgets/assignment-map/**"],
+    // widgets/result-summary・widgets/assignment-map・widgets/employee-explanation は
+    // pages/result からのみ参照されるが、widgets/setup-wizard 等と同様に
+    // widgets/pages 分離方針に基づく意図的な設計。
+    files: [
+      "src/widgets/result-summary/**",
+      "src/widgets/assignment-map/**",
+      "src/widgets/employee-explanation/**",
+    ],
     rules: {
       "fsd/insignificant-slice": "off",
     },
@@ -150,6 +155,36 @@ export default defineConfig([
     // widgets/voting-results-panel は pages/voting-manage からのみ参照されるが、
     // 同様に widgets/pages 分離方針に基づく意図的な設計（#129）。
     files: ["src/widgets/voting-results-panel/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
+  {
+    // features/export-assignment-result は pages/assignment からのみ参照されるが、
+    // features/export-result と同様に独立フィーチャーとして意図的に分離している。
+    files: ["src/features/export-assignment-result/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
+  {
+    // features/run-assignment は現時点では pages/assignment からのみ参照されるが、
+    // features/run-matching と同様、他スライスからの再利用を想定した独立フィーチャーとして
+    // 意図的に分離している。
+    files: ["src/features/run-assignment/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
+  {
+    // widgets/assignment-form・assignment-result・assignment-step-player は
+    // pages/assignment からのみ参照されるが、widgets/setup-wizard 等と同様に
+    // widgets/pages 分離方針（pages は合成のみでロジックを持たない）に基づく意図的な設計。
+    files: [
+      "src/widgets/assignment-form/**",
+      "src/widgets/assignment-result/**",
+      "src/widgets/assignment-step-player/**",
+    ],
     rules: {
       "fsd/insignificant-slice": "off",
     },

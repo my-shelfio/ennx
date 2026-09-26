@@ -14,9 +14,10 @@ import { FEATURE_CARDS } from "../lib/featureCards";
 
 /**
  * ホーム画面「今使える機能」セクション。
- * 配属マッチング・投票を対等なカードで提示する。カードは `FEATURE_CARDS`
+ * 配属マッチング・割り当て・投票を対等なカードで提示する。カードは `FEATURE_CARDS`
  * （`../lib/featureCards.ts`）に沿って描画するため、将来モジュールの追加は
- * データを1件足すだけで済む。
+ * データを1件足すだけで済む。カード数に関わらず欠けのないレイアウトになるよう、
+ * グリッドは現在のモジュール数に合わせて 3 列とする。
  */
 export function FeatureOverviewSection() {
   return (
@@ -25,11 +26,12 @@ export function FeatureOverviewSection() {
       <p className="mt-2 text-center text-sm text-slate-500">
         組織の意思決定を、経済学の理論で支援します。今後も理論モジュールを追加していきます。
       </p>
-      <div className="mt-10 grid gap-6 sm:grid-cols-2">
+      <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURE_CARDS.map((feature) => (
           <Card key={feature.key} className="flex flex-col">
             <CardHeader>
               <CardTitle>{feature.title}</CardTitle>
+              <CardDescription className="text-slate-600">{feature.problem}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
               <CardDescription>{feature.description}</CardDescription>

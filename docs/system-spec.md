@@ -90,10 +90,11 @@ ennx/
 │   ├── src/
 │   │   ├── api/
 │   │   │   └── v1/               #   feature ルータを /api/v1 prefix で集約
-│   │   ├── features/              #   機能単位（matching・voting）
+│   │   ├── features/              #   機能単位（matching・assignment・voting）
 │   │   │   └── <feature>/
-│   │   │       ├── domain/       #   最内層（フレームワーク非依存。matching: models / da / fda / ca / checks / events）
-│   │   │       ├── application/  #   usecases / dto（matching: RunMatching / ValidateInput / GetSample / GetConstraintMeta）
+│   │   │       ├── domain/       #   最内層（フレームワーク非依存。matching: models / da / fda / ca / checks / events、
+│   │   │       │                 #   assignment: models / ps / constraints / lottery / checks / events）
+│   │   │       ├── application/  #   usecases / dto（matching: RunMatching ほか、assignment: RunAssignment ほか）
 │   │   │       ├── presentation/ #   FastAPI ルータ（バージョン非依存）・Pydantic スキーマ・エラーハンドラ
 │   │   │       └── infrastructure/ #  config / di（voting: Neon PostgreSQL 実装）
 │   │   ├── shared/                #   feature 横断（性質レポート・エラー基底・エラーハンドラ共通部品・SPA配信・セキュリティヘッダ）
@@ -103,16 +104,19 @@ ennx/
 ├── frontend/
 │   └── src/                      # FSD 6 層（app → pages → widgets → features → entities → shared の一方向）
 │       ├── app/                  #   プロバイダ・ルータ・エントリ
-│       ├── pages/                #   home / setup / preferences / result / voting-create / voting-participate / voting-manage
+│       ├── pages/                #   home / setup / preferences / result / assignment /
+│       │                         #   voting-create / voting-participate / voting-manage
 │       ├── widgets/              #   setup-wizard / preference-matrix / result-summary / assignment-map / step-player /
+│       │                         #   assignment-form / assignment-result / assignment-step-player /
 │       │                         #   global-nav / voting-create-form / voting-ballot-form / voting-results-panel
-│       ├── features/             #   run-matching / validate-input / load-sample / import-input / export-result /
+│       ├── features/             #   run-matching / run-assignment / validate-input / load-sample / import-input /
+│       │                         #   export-result / export-assignment-result /
 │       │                         #   share-link / clear-data / analytics / ca-constraint-meta /
 │       │                         #   voting-create / voting-participate / voting-manage / export-voting-results
-│       ├── entities/             #   matching（OpenAPI 生成型・zustand ストア・イベントログパーサ）/ voting
+│       ├── entities/             #   matching（OpenAPI 生成型・zustand ストア・イベントログパーサ）/ assignment / voting
 │       └── shared/               #   ui（デザインシステム）/ api / config（ルート定数）/ lib
 │
-├── docs/                         # 本書 / event-schema.md
+├── docs/                         # 本書 / event-schema.md（matching・assignment の 2 スキーマ）
 ├── .claude/                      # rules / skills / agents
 ├── Dockerfile                    # multi-stage: backend → SPA ビルド → 統合ランタイム
 └── render.yaml                   # Render Blueprint（本番 ennx / 開発 ennx-dev）
@@ -122,15 +126,23 @@ ennx/
 
 ### 画面一覧 <!-- omit in toc -->
 
-| 画面           | パス                    | FSD スライス               | 概要                                                                                                                    |
-| -------------- | ----------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| ホーム         | `/`                     | `pages/home`               | ヒーロー + 機能カード（配属マッチング・投票を対等に提示）。「マッチングを始める」「サンプルデータで試す」導線           |
-| 設定ウィザード | `/matching/setup`       | `pages/setup`              | ステップ 1: 部署数・社員数 / ステップ 2: 制約種別（DA / FDA / CA）・定員・制約詳細                                      |
-| 選好入力       | `/matching/preferences` | `pages/preferences`        | 社員→部署・部署→社員の選好行列エディタ（リアルタイム検証・自動保存）                                                    |
-| 結果           | `/matching/result`      | `pages/result`             | サマリーカード・配属マップ・性質バッジ・詳細テーブル・エクスポート。ステップ再生ビューア（`widgets/step-player`）を内包 |
-| 投票作成       | `/voting/create`        | `pages/voting-create`      | 主催者が案・投票ルール・締切を設定し、参加用・管理用 URL を発行                                                         |
-| 投票参加       | `/voting/v/:token`      | `pages/voting-participate` | 匿名参加 URL から投票（ニックネーム必須）                                                                               |
-| 投票管理       | `/voting/m/:token`      | `pages/voting-manage`      | 主催者用。参加状況の確認・締切・集計結果と性質レポートの表示・削除・エクスポート                                        |
+各モジュールは「名前空間直下 = 導入ページ」「下位パス = 実行画面」で構成する。ホームのカードからは導入ページへ、グローバルナビからは実行画面へ直行させ、初回訪問者には説明を経由させつつ再訪ユーザーのクリック数を増やさない。
+
+| 画面                   | パス                    | FSD スライス               | 概要                                                                                                                            |
+| ---------------------- | ----------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| ホーム                 | `/`                     | `pages/home`               | アプリ全体の位置付けを伝えるポータル。ヒーロー（モジュール中立の CTA 1 件）・課題セクション・機能カード（3 モジュールを対等に提示）・今後の展開・FAQ |
+| 配属マッチング導入     | `/matching`             | `pages/matching-intro`     | 解決する課題・使う場面・進め方・保証される性質・アルゴリズム 3 種（DA / FDA / CA）の解説。設定ウィザードとサンプル実行への CTA        |
+| 設定ウィザード         | `/matching/setup`       | `pages/setup`              | ステップ 1: 部署数・社員数 / ステップ 2: 制約種別（DA / FDA / CA）・定員・制約詳細                                              |
+| 選好入力               | `/matching/preferences` | `pages/preferences`        | 社員→部署・部署→社員の選好行列エディタ（リアルタイム検証・自動保存）                                                            |
+| 結果                   | `/matching/result`      | `pages/result`             | サマリーカード・配属マップ・性質バッジ・詳細テーブル・エクスポート。ステップ再生ビューア（`widgets/step-player`）を内包         |
+| 割り当て導入           | `/assignment`           | `pages/assignment-intro`   | 解決する課題・使う場面・進め方・保証される性質。実行画面とサンプル実行への CTA                                                  |
+| 割り当て実行           | `/assignment/run`       | `pages/assignment`         | 片側選好の配分（PS）。規模・受け入れ人数・希望順位・NG ペアを 1 画面で入力し、期待割当・抽選結果・くじ・性質レポート・過程を表示 |
+| 投票・合意形成導入     | `/voting`               | `pages/voting-intro`       | 解決する課題・使う場面・進め方・保証される性質。CTA は投票の作成のみ（複数人の参加が前提でサンプル単独では体験が完結しないため） |
+| 投票作成               | `/voting/create`        | `pages/voting-create`      | 主催者が案・投票ルール・締切を設定し、参加用・管理用 URL を発行                                                                 |
+| 投票参加               | `/voting/v/:token`      | `pages/voting-participate` | 匿名参加 URL から投票（ニックネーム必須）                                                                                       |
+| 投票管理               | `/voting/m/:token`      | `pages/voting-manage`      | 主催者用。参加状況の確認・締切・集計結果と性質レポートの表示・削除・エクスポート                                                |
+
+導入ページ 3 件は共通の骨格（`widgets/module-intro`。解決する課題 → 使う場面 → 進め方の 4 ステップ → 保証される性質 → 実行画面への CTA）を共有し、モジュール固有の解説だけを差し込む。モジュールを追加する際は導入ページを 1 枚とホームのカードを 1 件足すだけで済む。
 
 パス定数の正本は `frontend/src/shared/config/routes.ts`。
 
@@ -138,18 +150,33 @@ ennx/
 
 ```mermaid
 flowchart LR
-    home["ホーム"] -->|マッチングを始める| setup["設定ウィザード<br>（規模 → 制約種別・定員）"]
-    home -->|サンプルデータで試す| pref["選好入力<br>（行列エディタ）"]
+    home["ホーム<br>（課題 → モジュール）"] -->|配属マッチングを見る| mIntro["配属マッチング導入"]
+    home -->|割り当てを見る| aIntro["割り当て導入"]
+    home -->|投票・合意形成を見る| vIntro["投票・合意形成導入"]
+
+    mIntro -->|マッチングを始める| setup["設定ウィザード<br>（規模 → 制約種別・定員）"]
+    mIntro -->|サンプルデータで試す| pref["選好入力<br>（行列エディタ）"]
     setup -->|validate 通過| pref
     pref -->|マッチングを実行（run）| result["結果<br>（サマリー・配属マップ・性質）"]
     result -->|実行過程を見る| player["ステップ再生ビューア"]
     player -->|閉じる| result
     result -->|条件を変えて再実行| setup
+
+    aIntro -->|割り当てを始める / サンプルデータで試す| assign["割り当て実行<br>（受け入れ人数 → 希望順位 → 追加制約）"]
+    assign -->|割り当てを実行（run）| assign
+
+    vIntro -->|投票を作成する| create["投票作成"]
+
+    nav["グローバルナビ"] -.->|実行画面へ直行| setup
+    nav -.-> assign
+    nav -.-> create
 ```
 
 - 入力途中のデータが localStorage に残っている場合、再訪時に「再開 / 破棄して新規」を選択できる。
 - 各画面にステップインジケータ（設定 → 選好 → 結果）を常設し、前ステップへは常に戻れる。
-- 投票はホームの導線から投票作成（`/voting/create`）へ遷移し、発行された参加用・管理用 URL から各画面へ直接アクセスする。
+- 割り当ての実行画面（`/assignment/run`）は入力から結果までを 1 画面で完結させる。部署側の順位づけが不要で入力量が少なく、条件を変えた再実行を同じ画面で繰り返せるほうが早いため、ウィザードに分割しない。結果は実行後に同じ画面の下部へ追加表示する。
+- 投票は導入ページ（`/voting`）から投票作成（`/voting/create`）へ遷移し、発行された参加用・管理用 URL から各画面へ直接アクセスする。
+- 移設前の `/assignment`（実行画面だったパス）は導入ページとし、実行画面へのリダイレクトは行わない。公開後日が浅く、外部共有リンクを生成する機能もないため、既存ブックマークが導入ページに着地する影響を許容する。共有リンクの生成対象であるマッチングの移設前パス（`/setup`・`/preferences`・`/result`）は、従来どおり新パスへ恒久的にリダイレクトする。
 
 ## 機能構成
 
@@ -183,8 +210,37 @@ sequenceDiagram
 
 ### サンプル読込・エクスポートフロー <!-- omit in toc -->
 
-- **サンプル読込**: `GET /api/v1/sample` から研修医マッチング風のデモ入力を取得してストアに投入し、入力済み状態の選好入力画面を表示する（クリックのみ・1 分以内で結果到達）。
-- **エクスポート**: 保持済みの結果データからクライアント内でファイルを生成する（サーバー往復なし）。JSON = 設定・選好・結果・性質レポートの全量 / CSV = 社員別配属表。投票の集計結果も同様にクライアント内でエクスポートできる（`features/export-voting-results`）。
+- **サンプル読込**: 導入ページの「サンプルデータで試す」から `?sample=1` 付きで実行画面に入る。マッチングは `GET /api/v1/sample` から研修医マッチング風のデモ入力を取得してストアに投入し、入力済み状態の選好入力画面を表示する（クリックのみ・1 分以内で結果到達）。割り当ては `GET /api/v1/assignment/sample` から案件アサイン風のデモ入力を取得し、入力済みの実行画面を表示する。いずれも取得に失敗した場合はエラーを通知したうえで空の入力から手入力を継続できる。投票は複数人の参加が前提でサンプル単独では体験が完結しないため、サンプル導線を設けない。
+- **エクスポート**: 保持済みの結果データからクライアント内でファイルを生成する（サーバー往復なし）。JSON = 設定・選好・結果・性質レポートの全量 / CSV = 社員別配属表。割り当て（`features/export-assignment-result`）・投票の集計結果（`features/export-voting-results`）も同様にクライアント内でエクスポートできる。
+
+### 割り当て実行フロー <!-- omit in toc -->
+
+配属マッチングと違い、部署の側は候補者に順位をつけない。社員の希望順位だけを入力し、
+PS メカニズムで「配属される確率（期待割当）」を求め、それを実際に配れる形（確定的な配属のくじ）に
+分解して返す。
+
+```mermaid
+sequenceDiagram
+    actor U as 利用者
+    participant SPA as SPA（React）
+    participant LS as localStorage
+    participant API as API（FastAPI）
+
+    U->>SPA: 受け入れ人数・希望順位・NG ペアを入力
+    SPA->>LS: 逐次自動保存
+    U->>SPA: 「割り当てを実行」
+    SPA->>API: POST /api/v1/assignment/run（設定＋希望順位の全量）
+    Note over API: ①分解可能性（bihierarchy）を検証<br/>②PS で期待割当を求める<br/>③一般化BvN で純割当のくじに分解
+    API-->>SPA: 期待割当・くじ・性質レポート・イベントログ
+    SPA-->>U: 期待割当 → くじ → 性質レポート → 実行過程の順に表示
+```
+
+- **期待割当**: 各社員が各部署に配属される確率。行の合計は必ず 1（∅ = 未配属を含む）。
+- **くじ**: 制約を満たす確定的な配属と、それを引く確率の組。**常に返すのは「1 回引いた結果」**（`drawn_assignment`）で、抽選に使ったシードを添えて再現可能にする。くじの全項（`lottery`）は項数が上限に収まった場合だけ添え、`lottery_complete` で区別する（全列挙は項数が最悪 2^(制約集合数) になるため）。
+- **抽選とスタンス**: 確率的な配分では抽選そのものがメカニズムの一部であるため、ennx は抽選を実行して結果とシードを示す。どの配属を採用するかの決定は利用者に委ねる。結果画面からシードを指定して同じ配属を再現でき、新しいシードで引き直すこともできる。
+- **シードの位置づけ**: シードは「同じ入力とシードなら誰が実行しても同じ配属になる」ことを示すためのもので、気に入る結果が出るまで引き直すことを防ぐ仕組みではない。恣意的な選択を避けるには抽選前にシードを関係者へ知らせるなどの運用が要る旨を、結果画面に明記する。
+- **保証しない性質の明示**: PS は耐戦略性を満たさないため、性質レポートに注意項目として常に表示する。
+- **エクスポート**: 配属表（抽選結果とシード）・期待割当（厳密な分数と小数近似・入力の控え）・JSON（全量）の 3 形式をクライアント内で生成する（サーバー往復なし）。分数は既約分数の文字列のまま出し、集計に使えるよう小数の近似列を併記する。
 
 ### 投票・合意形成フロー <!-- omit in toc -->
 
@@ -207,6 +263,16 @@ sequenceDiagram
 | GET      | `/api/v1/sample`                   | GetSample           | 研修医マッチング風サンプル入力                            |
 | GET      | `/healthz`                         | —                   | ヘルスチェック                                            |
 
+割り当て（assignment）のエンドポイント。部署側の順位づけを受け取らない点がマッチングとの違い。
+
+| メソッド | パス                                              | ユースケース                  | 内容                                                       |
+| -------- | ------------------------------------------------- | ----------------------------- | ---------------------------------------------------------- |
+| POST     | `/api/v1/assignment/run`                          | RunAssignment                 | 設定＋希望順位 → 期待割当・抽選結果（＋可能ならくじの全項）・性質レポート・イベントログ |
+| POST     | `/api/v1/assignment/validate`                     | ValidateAssignmentInput       | 入力の事前検証のみ（分解可能性の検証を含む）               |
+| GET      | `/api/v1/assignment/sample`                       | GetAssignmentSample           | 案件アサイン風サンプル入力                                 |
+| GET      | `/api/v1/meta/assignment-constraint-types`        | GetAssignmentConstraintMeta   | 制約種別とメカニズム（PS）のメタ情報                       |
+| GET      | `/api/v1/meta/assignment-upper-constraint-types`  | GetUpperConstraintMeta        | 追加の上限制約種別とフィールド定義（フォームの動的生成用） |
+
 投票（voting）のエンドポイント。参加用・管理用の 2 種類の推測不能トークンで認可する。
 
 | メソッド | パス                                           | 内容                                                                |
@@ -228,6 +294,8 @@ sequenceDiagram
 
 - 入力上限: **部署 ≤ 50・社員 ≤ 100**（`presentation/schemas` に定義）。超過は 422、過大ペイロードは 413 で拒否する。
 - アルゴリズムの理論的前提（FDA の「地域内目標定員合計 ≤ 地域上限」、CA の遺伝性制約など）は domain 層の入力検証（`__post_init__` の ValueError）で保証する。
+- 割り当て（PS）の入力上限は **社員 ≤ 50・部署 ≤ 15** と、マッチングより小さく設定する。くじを引く処理の計算時間が分数セル数（最悪 社員数 × 部署数）のおよそ 2 乗になるため（全員が同じ希望を出す最悪ケースの実測で 50 × 15 が約 0.6 秒、60 × 20 で約 1.7 秒）。希望順位がばらけると分数セルは大きく減り、同じ処理でも 1 桁速くなる。
+- 割り当て（PS）では、追加の上限制約が **bihierarchy** を成すこと（＝期待割当を確定的な配属のくじに分解できること）を実行前に検証する。交差する制約（例: NG ペアの鎖状指定）は 422 で拒否し、交差している制約名を理由として返す。
 
 ### エラー形式（RFC 9457） <!-- omit in toc -->
 
@@ -235,12 +303,13 @@ sequenceDiagram
 
 ### イベントログ契約 <!-- omit in toc -->
 
-- 実行過程は [event-schema.md](event-schema.md) の共通スキーマ（JSON Schema: [event-schema.json](event-schema.json)）で `Result.events` に記録する。**API 契約**であり、破壊的変更はスキーマ改版として扱う。
-- `reconstruct_matching` でイベントログから最終結果を再構成でき、配属結果と完全一致することを契約テスト（CI）で保証する。
+- 実行過程は [event-schema.md](event-schema.md) のスキーマで `Result.events` に記録する。**API 契約**であり、破壊的変更はスキーマ改版として扱う。
+- スキーマは feature ごとに分かれる（matching: [event-schema.json](event-schema.json)、assignment: [assignment-event-schema.json](assignment-event-schema.json)）。マッチングはラウンド単位の離散イベント、割り当ては連続時間の区間イベントで、過程の進み方が根本的に異なるため共通化しない。
+- イベントログから最終結果を再構成でき、結果と完全一致することを契約テスト（CI）で保証する（matching は `reconstruct_matching` で配属結果、assignment は `reconstruct_expected_assignment` で期待割当）。
 
 ### 状態管理方針 <!-- omit in toc -->
 
-- マッチングではサーバーはセッション・DB を持たない。
+- マッチング・割り当てではサーバーはセッション・DB を持たない。
 - 入力状態（条件・選好）は zustand ストアから localStorage に逐次永続化し、再訪時に復元できる。
 - 結果・イベントログは localStorage に保存せず、メモリ保持のみ（再表示は localStorage の入力からの再実行で賄う）。
 - 「入力データをクリア」導線を UI に常設し、共有端末での利用後に利用者自身が消去できる。
