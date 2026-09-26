@@ -198,7 +198,16 @@ export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceM
     applyReceiverMatrix(applyCommonRow(receiverMatrix, commonRow, overrides));
   }
 
-  const commonRowValidation = useMemo(() => validateRow(commonRow), [commonRow]);
+  // 共通順位を使う部署が 1 件もない（全部署を個別に設定している）場合は、共通順位の行が
+  // 空でも実行には影響しないため、エラーを表示しない。
+  const usesCommonRow = receiverOverrides.some((isOverridden) => !isOverridden);
+  const commonRowValidation = useMemo(
+    () =>
+      usesCommonRow
+        ? validateRow(commonRow)
+        : { duplicateColumns: new Set<number>(), isValid: true },
+    [commonRow, usesCommonRow],
+  );
 
   function renderReceiverRow(departmentName: string, rowIndex: number) {
     return (
