@@ -5,6 +5,7 @@ import {
   copyRow,
   fillRemainingAll,
   isMatrixValid,
+  isRowComplete,
   isRowEmpty,
   matrixFromPrefs,
   prefsFromMatrix,
@@ -113,7 +114,7 @@ export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceM
         <MatrixToolbar
           matrixLabel="社員 → 部署"
           hasEmptyRow={proposerMatrix.some(isRowEmpty)}
-          hasIncompleteRow={proposerMatrix.some((row) => row.some((cell) => cell === null))}
+          hasIncompleteRow={!proposerMatrix.every(isRowComplete)}
           onFillAll={() => applyProposerMatrix(fillRemainingAll(proposerMatrix))}
           onRandomizeEmpty={() =>
             applyProposerMatrix(randomizeMatrix(proposerMatrix, Math.random, "empty"))
@@ -154,7 +155,7 @@ export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceM
         <MatrixToolbar
           matrixLabel="部署 → 社員"
           hasEmptyRow={receiverMatrix.some(isRowEmpty)}
-          hasIncompleteRow={receiverMatrix.some((row) => row.some((cell) => cell === null))}
+          hasIncompleteRow={!receiverMatrix.every(isRowComplete)}
           onFillAll={() => applyReceiverMatrix(fillRemainingAll(receiverMatrix))}
           onRandomizeEmpty={() =>
             applyReceiverMatrix(randomizeMatrix(receiverMatrix, Math.random, "empty"))

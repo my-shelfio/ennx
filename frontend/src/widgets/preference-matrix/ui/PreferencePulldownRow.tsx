@@ -2,11 +2,17 @@ import type { RankCell, RowValidation } from "../../../entities/matching";
 import {
   filledColumnsInRankOrder,
   fillRemaining,
+  isRowComplete,
   rowFromOrderedColumns,
 } from "../../../entities/matching";
 import { Button } from "../../../shared/ui";
 import { cn } from "../../../shared/lib";
-import { gridCellAttributes, handleGridKeyDown } from "../lib/keyboardNavigation";
+import {
+  focusFirstCellInRow,
+  gridCellAttributes,
+  handleGridKeyDown,
+  suppressArrowKeySelection,
+} from "../lib/keyboardNavigation";
 
 export interface PreferencePulldownRowProps {
   /** 行の対象者名（例: 社員名・部署名）。 */
@@ -91,7 +97,13 @@ export function PreferencePulldownRow({
     onCopyFrom(Number(rawValue));
   }
 
-  const isComplete = orderedColumns.length >= columnCount;
+  function handleFillRemaining() {
+    onChangeRow(fillRemaining(row));
+    // 補完で行が埋まるとボタン自体が無効化されるため、フォーカスを行の先頭へ移す。
+    requestAnimationFrame(() => focusFirstCellInRow(rowIdPrefix, rowIndex));
+  }
+
+  const isComplete = isRowComplete(row);
   const copySelectId = `${rowIdPrefix}-row-${rowIndex}-copy`;
 
   if (columnCount === 0) {
@@ -119,9 +131,10 @@ export function PreferencePulldownRow({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size={null}
+            className="h-11 px-3 text-sm"
             disabled={isComplete}
-            onClick={() => onChangeRow(fillRemaining(row))}
+            onClick={handleFillRemaining}
             aria-label={`${rowLabel}の残りを自動補完`}
           >
             残りを自動補完
@@ -134,8 +147,9 @@ export function PreferencePulldownRow({
               <select
                 id={copySelectId}
                 value=""
+                onKeyDown={suppressArrowKeySelection}
                 onChange={(event) => handleCopyFrom(event.target.value)}
-                className="h-8 max-w-[11rem] rounded-control border border-slate-300 bg-white px-2 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                className="h-11 max-w-[11rem] rounded-control border border-slate-300 bg-white px-2 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
               >
                 <option value="" disabled>
                   行をコピー…

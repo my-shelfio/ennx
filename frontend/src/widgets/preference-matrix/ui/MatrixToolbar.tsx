@@ -70,7 +70,8 @@ export function MatrixToolbar({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size={null}
+        className="h-11 px-3 text-sm"
         disabled={!hasIncompleteRow}
         onClick={() => setPending("fill-all")}
       >
@@ -79,13 +80,20 @@ export function MatrixToolbar({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size={null}
+        className="h-11 px-3 text-sm"
         disabled={!hasEmptyRow}
         onClick={() => setPending("random-empty")}
       >
         ランダム生成（未入力の行）
       </Button>
-      <Button type="button" variant="ghost" size="sm" onClick={() => setPending("random-all")}>
+      <Button
+        type="button"
+        variant="ghost"
+        size={null}
+        className="h-11 px-3 text-sm"
+        onClick={() => setPending("random-all")}
+      >
         ランダム生成（全行を上書き）
       </Button>
 
