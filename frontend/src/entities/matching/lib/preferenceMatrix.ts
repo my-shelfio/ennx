@@ -188,3 +188,78 @@ export function updateRow(
 ): RankMatrix {
   return matrix.map((existingRow, r) => (r === rowIndex ? row : existingRow));
 }
+
+/**
+ * 行の未入力の相手を、列番号の昇順で末尾の希望順位へ追加した行を返す（「残りを自動補完」）。
+ * 入力済みの希望順（filledColumnsInRankOrder の並び）は変えない。結果は常に全列が
+ * 1 から連続した順位で埋まった有効な行になる（相手が 0 件の行は空行のまま）。
+ * 「希望しない」を表す入力が無いため、補完の順序は列番号順とする。
+ */
+export function fillRemaining(row: readonly RankCell[]): RankCell[] {
+  const ordered = filledColumnsInRankOrder(row);
+  const selected = new Set(ordered);
+  const remaining = row.map((_, columnIndex) => columnIndex).filter((c) => !selected.has(c));
+  return rowFromOrderedColumns([...ordered, ...remaining], row.length);
+}
+
+/**
+ * 全列をランダムな順に並べた行（1 から連続した順位の順列）を返す。
+ * rng は [0, 1) の一様乱数を返す関数（テストでは決定的な生成器を渡す）。
+ * Fisher–Yates シャッフルで順列を作る。
+ */
+export function randomRow(columnCount: number, rng: () => number): RankCell[] {
+  const order = Array.from({ length: columnCount }, (_, columnIndex) => columnIndex);
+  for (let i = order.length - 1; i > 0; i -= 1) {
+    const j = Math.min(i, Math.floor(rng() * (i + 1)));
+    const current = order[i] as number;
+    order[i] = order[j] as number;
+    order[j] = current;
+  }
+  return rowFromOrderedColumns(order, columnCount);
+}
+
+/**
+ * sourceRowIndex 行の内容を targetRowIndex 行へ複製した新しい行列を返す（イミュータブル）。
+ * どちらかの行番号が範囲外、または同じ行の場合は元の行列をそのまま返す。
+ */
+export function copyRow(
+  matrix: RankMatrix,
+  sourceRowIndex: number,
+  targetRowIndex: number,
+): RankMatrix {
+  const source = matrix[sourceRowIndex];
+  if (
+    source === undefined ||
+    targetRowIndex < 0 ||
+    targetRowIndex >= matrix.length ||
+    sourceRowIndex === targetRowIndex
+  ) {
+    return matrix;
+  }
+  return updateRow(matrix, targetRowIndex, [...source]);
+}
+
+/** 行に 1 件も入力が無い（全セル未入力）かどうか。 */
+export function isRowEmpty(row: readonly RankCell[]): boolean {
+  return row.every((cell) => cell === null);
+}
+
+/** 行列の全行に fillRemaining を適用した新しい行列を返す（「残りを自動補完（全行）」）。 */
+export function fillRemainingAll(matrix: RankMatrix): RankMatrix {
+  return matrix.map((row) => fillRemaining(row));
+}
+
+/**
+ * 行列の行をランダムな順列で埋めた新しい行列を返す。
+ * target が "empty" の場合は未入力の行（isRowEmpty）だけを埋め、入力済みの行は変えない。
+ * "all" の場合は全行を上書きする。
+ */
+export function randomizeMatrix(
+  matrix: RankMatrix,
+  rng: () => number,
+  target: "empty" | "all",
+): RankMatrix {
+  return matrix.map((row) =>
+    target === "all" || isRowEmpty(row) ? randomRow(row.length, rng) : row,
+  );
+}

@@ -27,11 +27,17 @@ export type { DepartmentAssignmentView, EmployeeAssignmentRow } from "./lib/assi
 export { DEPARTMENT_COUNT_MAX, EMPLOYEE_COUNT_MAX } from "./lib/limits";
 export { resolveNames } from "./lib/names";
 export {
+  copyRow,
   createEmptyMatrix,
   filledColumnsInRankOrder,
+  fillRemaining,
+  fillRemainingAll,
   isMatrixValid,
+  isRowEmpty,
   matrixFromPrefs,
   prefsFromMatrix,
+  randomizeMatrix,
+  randomRow,
   rowFromOrderedColumns,
   updateCell,
   updateRow,
