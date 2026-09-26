@@ -198,4 +198,13 @@ export default defineConfig([
       "fsd/insignificant-slice": "off",
     },
   },
+  {
+    // features/import-assignment-input は現時点では widgets/assignment-form からのみ参照されるが、
+    // 配属マッチングの取込（features/import-input）と対になる独立フィーチャーとして
+    // 意図的に分離している（同層 import 禁止のため、貼り付けの解釈は shared/lib で共用する）。
+    files: ["src/features/import-assignment-input/**"],
+    rules: {
+      "fsd/insignificant-slice": "off",
+    },
+  },
 ]);

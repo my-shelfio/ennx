@@ -27,17 +27,31 @@ export type { DepartmentAssignmentView, EmployeeAssignmentRow } from "./lib/assi
 export { DEPARTMENT_COUNT_MAX, EMPLOYEE_COUNT_MAX } from "./lib/limits";
 export { resolveNames } from "./lib/names";
 export {
+  copyRow,
   createEmptyMatrix,
   filledColumnsInRankOrder,
+  fillRemaining,
+  fillRemainingAll,
   isMatrixValid,
+  isRowComplete,
+  isRowEmpty,
   matrixFromPrefs,
   prefsFromMatrix,
+  randomizeMatrix,
+  randomRow,
   rowFromOrderedColumns,
   updateCell,
   updateRow,
   validateRow,
 } from "./lib/preferenceMatrix";
 export type { RankCell, RankMatrix, RowValidation } from "./lib/preferenceMatrix";
+export {
+  applyCommonRow,
+  createDefaultReceiverPrefsSettings,
+  normalizeReceiverPrefsSettings,
+  overridesOnEnterCommonMode,
+} from "./lib/commonRanking";
+export type { ReceiverPrefsMode, ReceiverPrefsSettings } from "./lib/commonRanking";
 export { buildEmployeeJourney } from "./lib/employeeJourney";
 export type {
   DepartmentOutcome,
