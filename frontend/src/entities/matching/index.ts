@@ -45,6 +45,13 @@ export {
   validateRow,
 } from "./lib/preferenceMatrix";
 export type { RankCell, RankMatrix, RowValidation } from "./lib/preferenceMatrix";
+export {
+  applyCommonRow,
+  createDefaultReceiverPrefsSettings,
+  normalizeReceiverPrefsSettings,
+  overridesOnEnterCommonMode,
+} from "./lib/commonRanking";
+export type { ReceiverPrefsMode, ReceiverPrefsSettings } from "./lib/commonRanking";
 export { buildEmployeeJourney } from "./lib/employeeJourney";
 export type {
   DepartmentOutcome,
