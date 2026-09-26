@@ -1,6 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { AssignmentInput } from "../../../entities/assignment";
+import { AssignmentPastePanel } from "../../../features/import-assignment-input";
+import type { PastedAssignment } from "../../../features/import-assignment-input";
 import {
   Button,
   Card,
@@ -37,6 +39,10 @@ function labels(names: readonly string[] | null | undefined, count: number, pref
  * 配属マッチングの設定ウィザードと違い、部署の側の順位づけは求めない
  * （PS は片側選好のメカニズムであるため）。1 画面で規模・受け入れ人数・
  * 希望順位・追加制約まで入力できるようにしている。
+ *
+ * 希望順位は Excel 等からの貼り付けでも取り込める。貼り付けの社員数・部署数が現在と
+ * 異なる場合は、規模の変更と同じ規則（withEmployeeCount / withDepartmentCount）で規模を
+ * 合わせてから希望順位と名前を置き換える。
  */
 export function AssignmentForm({
   input,
@@ -48,6 +54,22 @@ export function AssignmentForm({
   const employeeLabels = labels(input.employee_names, input.agent_prefs.length, "社員");
   const departmentLabels = labels(input.department_names, input.capacities.length, "部署");
   const errors = useMemo(() => validateAssignmentInput(input), [input]);
+  const [isPasteOpen, setIsPasteOpen] = useState(false);
+
+  const applyPasted = (pasted: PastedAssignment): AssignmentInput => {
+    const resized = withDepartmentCount(
+      withEmployeeCount(input, pasted.employeeCount),
+      pasted.departmentCount,
+    );
+    const next: AssignmentInput = {
+      ...resized,
+      agent_prefs: pasted.agentPrefs,
+      employee_names: pasted.employeeNames ?? resized.employee_names ?? null,
+      department_names: pasted.departmentNames ?? resized.department_names ?? null,
+    };
+    onChange(next);
+    return next;
+  };
 
   const ngPairs = useMemo(() => {
     const entry = input.constraints?.find((constraint) => constraint.type === "ng_pair");
@@ -129,7 +151,29 @@ export function AssignmentForm({
             希望する部署だけを上位から選びます。選ばなかった部署には配属されません。
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-col gap-4">
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size={null}
+              className="h-11 px-4 text-sm"
+              aria-expanded={isPasteOpen}
+              onClick={() => setIsPasteOpen((open) => !open)}
+            >
+              {isPasteOpen ? "貼り付けを閉じる" : "Excelから貼り付け"}
+            </Button>
+          </div>
+          {isPasteOpen ? (
+            <AssignmentPastePanel
+              currentEmployeeCount={input.agent_prefs.length}
+              currentDepartmentCount={input.capacities.length}
+              employeeMax={EMPLOYEE_COUNT_MAX}
+              departmentMax={DEPARTMENT_COUNT_MAX}
+              onApply={applyPasted}
+              onApplied={() => setIsPasteOpen(false)}
+            />
+          ) : null}
           <div className="w-full overflow-x-auto">
             <table className="w-full border-collapse text-sm">
               <thead className="border-b border-slate-200">
