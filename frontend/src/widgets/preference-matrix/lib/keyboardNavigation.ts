@@ -6,7 +6,8 @@ import type { KeyboardEvent } from "react";
  * 各プルダウン（select）に data 属性でグリッド名・行・列（希望順位の位置）を持たせ、
  * 矢印キーで同じグリッド内の隣のプルダウンへフォーカスを移す。
  * - 左右: 同じ行の前後の希望順位へ移動する
- * - 上下: 前後の行の同じ希望順位へ移動する（その行のプルダウンが少ない場合は末尾へ）
+ * - 上下: 前後の行の同じ希望順位へ移動する（その行のプルダウンが少ない場合は末尾へ）。
+ *   表示されていない行（例: 共通の評価順位を使う部署）は飛ばして、次に表示されている行へ移動する
  *
  * ブラウザ標準では、閉じた select 上の矢印キーは選択値の変更（Windows 等）や
  * 一覧の展開（macOS）に使われる。この行列では選択の変更が即座に保存されるため、
@@ -34,6 +35,19 @@ function cellsInRow(grid: string, row: number): HTMLElement[] {
   return Array.from(document.querySelectorAll<HTMLElement>(selector)).sort(
     (a, b) => Number(a.getAttribute(COL_ATTR)) - Number(b.getAttribute(COL_ATTR)),
   );
+}
+
+/** グリッド内で、row より上（direction = -1）または下（+1）にある最も近い表示中の行番号。 */
+function adjacentRow(grid: string, row: number, direction: -1 | 1): number | undefined {
+  const selector = `[${GRID_ATTR}="${CSS.escape(grid)}"]`;
+  const rows = Array.from(document.querySelectorAll<HTMLElement>(selector)).map((cell) =>
+    Number(cell.getAttribute(ROW_ATTR)),
+  );
+  const candidates = rows.filter((r) => (direction === 1 ? r > row : r < row));
+  if (candidates.length === 0) {
+    return undefined;
+  }
+  return direction === 1 ? Math.min(...candidates) : Math.max(...candidates);
 }
 
 function isPlainArrowKey(event: KeyboardEvent<HTMLElement>): boolean {
@@ -71,10 +85,18 @@ export function handleGridKeyDown(event: KeyboardEvent<HTMLElement>): void {
 
   event.preventDefault();
 
-  const targetRow = key === "ArrowUp" ? row - 1 : key === "ArrowDown" ? row + 1 : row;
+  const targetRow =
+    key === "ArrowUp"
+      ? adjacentRow(grid, row, -1)
+      : key === "ArrowDown"
+        ? adjacentRow(grid, row, 1)
+        : row;
   const targetCol = key === "ArrowLeft" ? col - 1 : key === "ArrowRight" ? col + 1 : col;
+  if (targetRow === undefined || targetCol < 0) {
+    return;
+  }
   const candidates = cellsInRow(grid, targetRow);
-  if (candidates.length === 0 || targetCol < 0) {
+  if (candidates.length === 0) {
     return;
   }
   const target =

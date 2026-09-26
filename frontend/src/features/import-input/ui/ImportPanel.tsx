@@ -42,7 +42,6 @@ async function readFiles(fileList: FileList): Promise<RawImportFile[]> {
  */
 export function ImportPanel({ mode, onImported }: ImportPanelProps) {
   const input = useMatchingInputStore((state) => state.input);
-  const setInput = useMatchingInputStore((state) => state.setInput);
   const setBulkInput = useMatchingInputStore((state) => state.setBulkInput);
   const { toast } = useToast();
   const validateMutation = useValidateImportedInput();
@@ -153,7 +152,9 @@ export function ImportPanel({ mode, onImported }: ImportPanelProps) {
         employee_names: preview.employeeNames ?? input.employee_names ?? null,
         department_names: preview.departmentNames ?? input.department_names ?? null,
       };
-      setInput(patch);
+      // 取り込んだ部署→社員の選好は部署ごとの値のため、入力方式も部署ごとモードへ戻す
+      // （setBulkInput は部署数が変わらない限り他の設定を保つ）。
+      setBulkInput(patch);
       nextInput = { ...input, ...patch };
     }
 
