@@ -1,6 +1,6 @@
 [project]
 name = "ennx"
-version = "0.1.0"
+version = "0.2.0"
 description = "企業の問題を経済学を応用して可視化する Web アプリ（MVP）"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
