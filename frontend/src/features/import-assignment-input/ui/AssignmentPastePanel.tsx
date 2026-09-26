@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import type { AssignmentInput } from "../../../entities/assignment";
 import { ApiError } from "../../../shared/api";
 import { Button, useToast } from "../../../shared/ui";
-import { parsePastedAssignment } from "../lib/parsePastedAssignment";
+import { employeeNamesChanged, parsePastedAssignment } from "../lib/parsePastedAssignment";
 import type { PastedAssignment } from "../lib/parsePastedAssignment";
 import { useValidateAssignmentInput } from "../model/useValidateAssignmentInput";
 
@@ -12,6 +12,10 @@ export interface AssignmentPastePanelProps {
   currentEmployeeCount: number;
   /** 現在の部署数（規模が変わる場合の案内に使う）。 */
   currentDepartmentCount: number;
+  /** 現在の社員名（表示名）。貼り付けで社員の並びが変わるかの案内に使う。 */
+  currentEmployeeNames: readonly string[];
+  /** 追加の制約（同じ部署に配属しない組）が設定されているか。解除される場合の案内に使う。 */
+  hasConstraints: boolean;
   employeeMax: number;
   departmentMax: number;
   /**
@@ -34,6 +38,8 @@ export interface AssignmentPastePanelProps {
 export function AssignmentPastePanel({
   currentEmployeeCount,
   currentDepartmentCount,
+  currentEmployeeNames,
+  hasConstraints,
   employeeMax,
   departmentMax,
   onApply,
@@ -56,6 +62,10 @@ export function AssignmentPastePanel({
   if (pasted !== null && pasted.departmentCount !== currentDepartmentCount) {
     scaleChanges.push(`部署数 ${currentDepartmentCount} → ${pasted.departmentCount} 件`);
   }
+  const resetsConstraints =
+    hasConstraints &&
+    pasted !== null &&
+    (scaleChanges.length > 0 || employeeNamesChanged(pasted, currentEmployeeNames));
 
   function handleApply() {
     if (pasted === null) {
@@ -144,7 +154,10 @@ export function AssignmentPastePanel({
             <p className="text-slate-600">
               エラーはありません。反映すると、現在の希望順位はすべて置き換わります。
               {scaleChanges.length > 0
-                ? `規模が変わります（${scaleChanges.join("・")}）。増えた部署の受け入れ人数は 1 人になり、追加の制約（同じ部署に配属しない組）は解除されます。`
+                ? `規模が変わります（${scaleChanges.join("・")}）。増えた部署の受け入れ人数は 1 人になります。`
+                : null}
+              {resetsConstraints
+                ? "規模や社員の並びが変わるため、追加の制約（同じ部署に配属しない組）は解除されます。"
                 : null}
             </p>
           )}

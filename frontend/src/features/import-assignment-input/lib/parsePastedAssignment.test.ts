@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { parsePastedAssignment } from "./parsePastedAssignment";
+import { employeeNamesChanged, parsePastedAssignment } from "./parsePastedAssignment";
 
 const limits = { employeeMax: 50, departmentMax: 15 };
 
@@ -59,5 +59,28 @@ describe("parsePastedAssignment", () => {
       tableErrors: ["貼り付けた内容に行がありません。"],
       pasted: null,
     });
+  });
+});
+
+describe("employeeNamesChanged", () => {
+  const pasted = (employeeNames: string[] | null) => ({
+    employeeCount: 2,
+    departmentCount: 1,
+    departmentNames: null,
+    employeeNames,
+    agentPrefs: [[1], [1]],
+  });
+
+  test("名前列が無ければ並びは変わらないとみなす", () => {
+    expect(employeeNamesChanged(pasted(null), ["社員1", "社員2"])).toBe(false);
+  });
+
+  test("同じ名前・同じ並びなら変わらない", () => {
+    expect(employeeNamesChanged(pasted(["田中", "鈴木"]), ["田中", "鈴木"])).toBe(false);
+  });
+
+  test("並び替え・名前の変更は変わったとみなす", () => {
+    expect(employeeNamesChanged(pasted(["鈴木", "田中"]), ["田中", "鈴木"])).toBe(true);
+    expect(employeeNamesChanged(pasted(["田中", "佐藤"]), ["田中", "鈴木"])).toBe(true);
   });
 });

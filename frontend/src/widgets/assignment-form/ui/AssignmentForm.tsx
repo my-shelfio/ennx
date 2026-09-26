@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 
 import type { AssignmentInput } from "../../../entities/assignment";
-import { AssignmentPastePanel } from "../../../features/import-assignment-input";
+import {
+  AssignmentPastePanel,
+  employeeNamesChanged,
+} from "../../../features/import-assignment-input";
 import type { PastedAssignment } from "../../../features/import-assignment-input";
 import {
   Button,
@@ -61,11 +64,15 @@ export function AssignmentForm({
       withEmployeeCount(input, pasted.employeeCount),
       pasted.departmentCount,
     );
+    // 社員の並びが変わると、社員 index で指す追加の制約が別の人を指してしまうため解除する
+    // （社員数・部署数が変わる場合は withEmployeeCount / withDepartmentCount が解除する）。
+    const namesChanged = employeeNamesChanged(pasted, employeeLabels);
     const next: AssignmentInput = {
       ...resized,
       agent_prefs: pasted.agentPrefs,
       employee_names: pasted.employeeNames ?? resized.employee_names ?? null,
       department_names: pasted.departmentNames ?? resized.department_names ?? null,
+      ...(namesChanged ? { constraint_type: "capacity_only", constraints: null } : {}),
     };
     onChange(next);
     return next;
@@ -168,6 +175,8 @@ export function AssignmentForm({
             <AssignmentPastePanel
               currentEmployeeCount={input.agent_prefs.length}
               currentDepartmentCount={input.capacities.length}
+              currentEmployeeNames={employeeLabels}
+              hasConstraints={ngPairs.length > 0}
               employeeMax={EMPLOYEE_COUNT_MAX}
               departmentMax={DEPARTMENT_COUNT_MAX}
               onApply={applyPasted}

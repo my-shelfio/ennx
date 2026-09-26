@@ -141,3 +141,22 @@ export function parsePastedAssignment(
         },
   };
 }
+
+/**
+ * 貼り付けで社員の並び（名前）が現在と変わるかどうか。
+ * 追加の制約（同じ部署に配属しない組）は社員の並び順（index）で社員を指すため、
+ * 並びが変わる場合は制約を解除する必要がある。名前列が無い貼り付けは並びを判断できないため、
+ * 現在の並びのままとみなす（社員数が変わる場合の解除は規模変更の規則が担う）。
+ */
+export function employeeNamesChanged(
+  pasted: PastedAssignment,
+  currentEmployeeNames: readonly string[],
+): boolean {
+  if (pasted.employeeNames === null) {
+    return false;
+  }
+  return (
+    pasted.employeeNames.length !== currentEmployeeNames.length ||
+    pasted.employeeNames.some((name, index) => name !== currentEmployeeNames[index])
+  );
+}
