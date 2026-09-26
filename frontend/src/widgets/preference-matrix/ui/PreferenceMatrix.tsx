@@ -2,9 +2,13 @@ import { useMemo, useState } from "react";
 
 import type { RankCell, RankMatrix } from "../../../entities/matching";
 import {
+  copyRow,
+  fillRemainingAll,
   isMatrixValid,
+  isRowEmpty,
   matrixFromPrefs,
   prefsFromMatrix,
+  randomizeMatrix,
   resolveNames,
   updateRow,
   useMatchingInputStore,
@@ -12,6 +16,7 @@ import {
 } from "../../../entities/matching";
 import { Button } from "../../../shared/ui";
 
+import { MatrixToolbar } from "./MatrixToolbar";
 import { PreferencePulldownRow } from "./PreferencePulldownRow";
 
 export interface PreferenceMatrixProps {
@@ -41,6 +46,10 @@ export interface PreferenceMatrixProps {
  * 設けない。全行が常に画面上に並ぶ単一画面構成では一覧性がもともと高く、
  * 一覧から該当行へジャンプする導線の価値が小さいため、実装をシンプルに保つことを
  * 優先した。
+ *
+ * 手入力の負荷を下げるため、行列ごとに一括操作のツールバー（残りを自動補完・
+ * ランダム生成）を、各行に「残りを自動補完」「行をコピー」を置く。一括操作も
+ * 1 行の編集と同じく、ローカルの行列を更新してからストアへ自動保存する。
  */
 export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceMatrixProps) {
   const setInput = useMatchingInputStore((state) => state.setInput);
@@ -77,16 +86,22 @@ export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceM
     isMatrixValid(proposerMatrix) &&
     isMatrixValid(receiverMatrix);
 
-  function handleChangeProposerRow(rowIndex: number, nextRow: RankCell[]) {
-    const next = updateRow(proposerMatrix, rowIndex, nextRow);
+  function applyProposerMatrix(next: RankMatrix) {
     setProposerMatrix(next);
     setInput({ proposer_prefs: prefsFromMatrix(next) });
   }
 
-  function handleChangeReceiverRow(rowIndex: number, nextRow: RankCell[]) {
-    const next = updateRow(receiverMatrix, rowIndex, nextRow);
+  function applyReceiverMatrix(next: RankMatrix) {
     setReceiverMatrix(next);
     setInput({ receiver_prefs: prefsFromMatrix(next) });
+  }
+
+  function handleChangeProposerRow(rowIndex: number, nextRow: RankCell[]) {
+    applyProposerMatrix(updateRow(proposerMatrix, rowIndex, nextRow));
+  }
+
+  function handleChangeReceiverRow(rowIndex: number, nextRow: RankCell[]) {
+    applyReceiverMatrix(updateRow(receiverMatrix, rowIndex, nextRow));
   }
 
   return (
@@ -95,6 +110,18 @@ export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceM
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           社員 → 部署
         </h2>
+        <MatrixToolbar
+          matrixLabel="社員 → 部署"
+          hasEmptyRow={proposerMatrix.some(isRowEmpty)}
+          hasIncompleteRow={proposerMatrix.some((row) => row.some((cell) => cell === null))}
+          onFillAll={() => applyProposerMatrix(fillRemainingAll(proposerMatrix))}
+          onRandomizeEmpty={() =>
+            applyProposerMatrix(randomizeMatrix(proposerMatrix, Math.random, "empty"))
+          }
+          onRandomizeAll={() =>
+            applyProposerMatrix(randomizeMatrix(proposerMatrix, Math.random, "all"))
+          }
+        />
         <div className="flex flex-col gap-2">
           {employeeNames.map((employeeName, rowIndex) => (
             <PreferencePulldownRow
@@ -111,6 +138,10 @@ export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceM
               onChangeRow={(nextRow) => handleChangeProposerRow(rowIndex, nextRow)}
               rowIdPrefix="proposer"
               rowIndex={rowIndex}
+              copySourceLabels={employeeNames}
+              onCopyFrom={(sourceRowIndex) =>
+                applyProposerMatrix(copyRow(proposerMatrix, sourceRowIndex, rowIndex))
+              }
             />
           ))}
         </div>
@@ -120,6 +151,18 @@ export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceM
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           部署 → 社員
         </h2>
+        <MatrixToolbar
+          matrixLabel="部署 → 社員"
+          hasEmptyRow={receiverMatrix.some(isRowEmpty)}
+          hasIncompleteRow={receiverMatrix.some((row) => row.some((cell) => cell === null))}
+          onFillAll={() => applyReceiverMatrix(fillRemainingAll(receiverMatrix))}
+          onRandomizeEmpty={() =>
+            applyReceiverMatrix(randomizeMatrix(receiverMatrix, Math.random, "empty"))
+          }
+          onRandomizeAll={() =>
+            applyReceiverMatrix(randomizeMatrix(receiverMatrix, Math.random, "all"))
+          }
+        />
         <div className="flex flex-col gap-2">
           {departmentNames.map((departmentName, rowIndex) => (
             <PreferencePulldownRow
@@ -136,6 +179,10 @@ export function PreferenceMatrix({ onSubmit, isSubmitting = false }: PreferenceM
               onChangeRow={(nextRow) => handleChangeReceiverRow(rowIndex, nextRow)}
               rowIdPrefix="receiver"
               rowIndex={rowIndex}
+              copySourceLabels={departmentNames}
+              onCopyFrom={(sourceRowIndex) =>
+                applyReceiverMatrix(copyRow(receiverMatrix, sourceRowIndex, rowIndex))
+              }
             />
           ))}
         </div>

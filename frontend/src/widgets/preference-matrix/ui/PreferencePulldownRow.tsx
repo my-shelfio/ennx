@@ -1,7 +1,12 @@
 import type { RankCell, RowValidation } from "../../../entities/matching";
-import { filledColumnsInRankOrder, rowFromOrderedColumns } from "../../../entities/matching";
+import {
+  filledColumnsInRankOrder,
+  fillRemaining,
+  rowFromOrderedColumns,
+} from "../../../entities/matching";
 import { Button } from "../../../shared/ui";
 import { cn } from "../../../shared/lib";
+import { gridCellAttributes, handleGridKeyDown } from "../lib/keyboardNavigation";
 
 export interface PreferencePulldownRowProps {
   /** 行の対象者名（例: 社員名・部署名）。 */
@@ -14,6 +19,13 @@ export interface PreferencePulldownRowProps {
   /** 行の DOM id に使う接頭辞（例: "proposer" / "receiver"）。 */
   rowIdPrefix: string;
   rowIndex: number;
+  /**
+   * 同じ行列の全行のラベル（「行をコピー」のコピー元の選択肢）。
+   * 未指定の場合は「行をコピー」を表示しない。
+   */
+  copySourceLabels?: readonly string[];
+  /** コピー元の行（行インデックス）が選ばれたときのハンドラ。 */
+  onCopyFrom?: (sourceRowIndex: number) => void;
 }
 
 /**
@@ -28,6 +40,10 @@ export interface PreferencePulldownRowProps {
  * entities/matching の filledColumnsInRankOrder / rowFromOrderedColumns で相互変換する。
  * この変換を経由する限り、希望順位は常に1から連続した値になるため、順位の重複・抜けは
  * 構造的に発生しない（validateRow が検出しうるのは「1件も選択していない」場合のみ）。
+ *
+ * 入力補助として、行見出しの横に「残りを自動補完」（未選択の相手を列の順に末尾へ追加）と
+ * 「行をコピー」（同じ行列の別の行の内容を複製）を置く。プルダウン間は矢印キーで移動できる
+ * （左右 = 同じ行の前後の希望順位、上下 = 前後の行）。
  */
 export function PreferencePulldownRow({
   rowLabel,
@@ -37,6 +53,8 @@ export function PreferencePulldownRow({
   onChangeRow,
   rowIdPrefix,
   rowIndex,
+  copySourceLabels,
+  onCopyFrom,
 }: PreferencePulldownRowProps) {
   const columnCount = counterpartLabels.length;
   const orderedColumns = filledColumnsInRankOrder(row);
@@ -66,6 +84,16 @@ export function PreferencePulldownRow({
     commit([...orderedColumns, Number(rawValue)]);
   }
 
+  function handleCopyFrom(rawValue: string) {
+    if (rawValue === "" || onCopyFrom === undefined) {
+      return;
+    }
+    onCopyFrom(Number(rawValue));
+  }
+
+  const isComplete = orderedColumns.length >= columnCount;
+  const copySelectId = `${rowIdPrefix}-row-${rowIndex}-copy`;
+
   if (columnCount === 0) {
     return (
       <div
@@ -85,7 +113,45 @@ export function PreferencePulldownRow({
       id={`${rowIdPrefix}-row-${rowIndex}`}
       className="rounded-control border border-slate-200 bg-white px-4 py-3"
     >
-      <p className="text-sm font-medium text-slate-900">{rowLabel}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium text-slate-900">{rowLabel}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isComplete}
+            onClick={() => onChangeRow(fillRemaining(row))}
+            aria-label={`${rowLabel}の残りを自動補完`}
+          >
+            残りを自動補完
+          </Button>
+          {copySourceLabels !== undefined && copySourceLabels.length > 1 ? (
+            <>
+              <label htmlFor={copySelectId} className="sr-only">
+                {`${rowLabel}へコピーする行`}
+              </label>
+              <select
+                id={copySelectId}
+                value=""
+                onChange={(event) => handleCopyFrom(event.target.value)}
+                className="h-8 max-w-[11rem] rounded-control border border-slate-300 bg-white px-2 text-sm text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+              >
+                <option value="" disabled>
+                  行をコピー…
+                </option>
+                {copySourceLabels.map((label, idx) =>
+                  idx === rowIndex ? null : (
+                    <option key={idx} value={idx}>
+                      {idx === rowIndex - 1 ? `${label}（直前の行）` : label}
+                    </option>
+                  ),
+                )}
+              </select>
+            </>
+          ) : null}
+        </div>
+      </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {orderedColumns.map((columnIndex, position) => {
@@ -97,6 +163,8 @@ export function PreferencePulldownRow({
               </label>
               <select
                 id={selectId}
+                {...gridCellAttributes(rowIdPrefix, rowIndex, position)}
+                onKeyDown={handleGridKeyDown}
                 value={columnIndex}
                 aria-describedby={validation.isValid === false ? rowErrorId : undefined}
                 onChange={(event) => handleChangeSlot(position, event.target.value)}
@@ -133,6 +201,8 @@ export function PreferencePulldownRow({
             </label>
             <select
               id={`${rowIdPrefix}-row-${rowIndex}-rank-${orderedColumns.length}`}
+              {...gridCellAttributes(rowIdPrefix, rowIndex, orderedColumns.length)}
+              onKeyDown={handleGridKeyDown}
               value=""
               aria-describedby={validation.isValid === false ? rowErrorId : undefined}
               onChange={(event) => handleAddSlot(event.target.value)}
