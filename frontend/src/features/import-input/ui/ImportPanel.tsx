@@ -19,8 +19,14 @@ export interface ImportPanelProps {
    *   既存の部署設定（定員・制約種別）は変更しない（選好入力画面からの再取込、pages/preferences）。
    */
   mode: "full" | "preferences";
-  /** 取込確定（ストア反映）が完了した後の遷移等のハンドラ。 */
+  /** 取込確定（ストア反映と事前検証）が完了した後の遷移等のハンドラ。 */
   onImported: () => void;
+  /**
+   * 取り込んだ内容をストアへ書き込んだ直後（事前検証の応答を待つ前）に呼ぶハンドラ。
+   * 表示中の入力エディタにストアの値を読み直させる用途（検証を待つ間に古い表示のまま
+   * 編集されて、取り込んだ内容が上書きされるのを防ぐ）。
+   */
+  onStoreUpdated?: () => void;
 }
 
 const ROLES_BY_MODE: Record<ImportPanelProps["mode"], ImportFileRole[]> = {
@@ -47,7 +53,7 @@ type ImportSource = "file" | "paste";
  * Excel 等からの貼り付け（選好行列 1 つ分）を選べる。設定ウィザードからの新規取込は
  * 部署・定員も必要なため、ファイル取込のみとする。
  */
-export function ImportPanel({ mode, onImported }: ImportPanelProps) {
+export function ImportPanel({ mode, onImported, onStoreUpdated }: ImportPanelProps) {
   const input = useMatchingInputStore((state) => state.input);
   const setBulkInput = useMatchingInputStore((state) => state.setBulkInput);
   const { toast } = useToast();
@@ -165,6 +171,7 @@ export function ImportPanel({ mode, onImported }: ImportPanelProps) {
       setBulkInput(patch);
       nextInput = { ...input, ...patch };
     }
+    onStoreUpdated?.();
 
     validateMutation.mutate(nextInput, {
       onSuccess: (result) => {
@@ -210,7 +217,7 @@ export function ImportPanel({ mode, onImported }: ImportPanelProps) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {mode === "preferences" ? (
-          <div className="flex gap-2" role="tablist" aria-label="取り込み方法">
+          <div className="flex gap-2" role="group" aria-label="取り込み方法">
             {(
               [
                 { value: "file", label: "CSVファイル" },
@@ -220,8 +227,7 @@ export function ImportPanel({ mode, onImported }: ImportPanelProps) {
               <Button
                 key={option.value}
                 type="button"
-                role="tab"
-                aria-selected={source === option.value}
+                aria-pressed={source === option.value}
                 variant={source === option.value ? "secondary" : "ghost"}
                 size={null}
                 className="h-11 px-4 text-sm"
@@ -234,7 +240,10 @@ export function ImportPanel({ mode, onImported }: ImportPanelProps) {
         ) : null}
 
         {source === "paste" && mode === "preferences" ? (
-          <PastePanel onImported={onImported} />
+          <PastePanel
+            onImported={onImported}
+            {...(onStoreUpdated !== undefined ? { onStoreUpdated } : {})}
+          />
         ) : (
           <>
             <TemplateDownloadLinks roles={allowedRoles} />

@@ -11,6 +11,8 @@ import { useValidateImportedInput } from "../model/useValidateImportedInput";
 export interface PastePanelProps {
   /** 反映（ストアへの書き込みと事前検証）が完了した後のハンドラ。 */
   onImported: () => void;
+  /** ストアへ書き込んだ直後（事前検証の応答を待つ前）に呼ぶハンドラ。 */
+  onStoreUpdated?: () => void;
 }
 
 const TARGETS: { value: PasteTarget; label: string; hint: string }[] = [
@@ -35,7 +37,7 @@ const TARGETS: { value: PasteTarget; label: string; hint: string }[] = [
  * 一覧表示する。反映後は CSV 取込と同じく事前検証（`POST /api/v1/matching/validate`）を
  * 通し、結果をトーストで知らせる。
  */
-export function PastePanel({ onImported }: PastePanelProps) {
+export function PastePanel({ onImported, onStoreUpdated }: PastePanelProps) {
   const input = useMatchingInputStore((state) => state.input);
   const setInput = useMatchingInputStore((state) => state.setInput);
   const setBulkInput = useMatchingInputStore((state) => state.setBulkInput);
@@ -91,6 +93,7 @@ export function PastePanel({ onImported }: PastePanelProps) {
       setBulkInput({ receiver_prefs: preview.prefs });
       nextInput = { ...input, receiver_prefs: preview.prefs };
     }
+    onStoreUpdated?.();
 
     validateMutation.mutate(nextInput, {
       onSuccess: (result) => {

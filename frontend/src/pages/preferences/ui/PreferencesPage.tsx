@@ -19,9 +19,11 @@ import { PreferenceMatrix } from "../../../widgets/preference-matrix";
  * 選好行列のみの CSV 再取込・Excel からの貼り付け取込にも対応する。既存の部署・社員名簿は
  * 変更せず、選好行列だけを置き換える（エクスポート→外部で編集→再インポートの往復運用向け）。
  *
- * 選好行列エディタは初回表示時のストアの値だけを読むため、取込が完了したら key を変えて
- * 再マウントし、取り込んだ内容（と部署ごとモードへ戻した入力方式）を読み直させる。
- * 再マウントしないと、表示が取込前のまま残り、次の編集で取込内容が上書きされてしまう。
+ * 選好行列エディタは初回表示時のストアの値だけを読むため、取り込んだ内容をストアへ
+ * 書き込んだ直後（事前検証の応答を待つ前）に key を変えて再マウントし、取り込んだ内容
+ * （と部署ごとモードへ戻した入力方式）を読み直させる。再マウントしないと表示が取込前の
+ * まま残り、次の編集で取込内容が上書きされてしまう。検証の応答を待ってから再マウントすると、
+ * 待っている間（コールドスタート時は数十秒）の編集で同じ上書きが起きるため、書き込み直後に行う。
  */
 export function PreferencesPage() {
   const input = useMatchingInputStore((state) => state.input);
@@ -95,9 +97,11 @@ export function PreferencesPage() {
       {isImportOpen ? (
         <ImportPanel
           mode="preferences"
+          onStoreUpdated={() => {
+            setMatrixKey((key) => key + 1);
+          }}
           onImported={() => {
             setIsImportOpen(false);
-            setMatrixKey((key) => key + 1);
           }}
         />
       ) : null}
