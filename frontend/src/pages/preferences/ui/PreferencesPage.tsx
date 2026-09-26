@@ -16,9 +16,12 @@ import { PreferenceMatrix } from "../../../widgets/preference-matrix";
  * `useMatchingResultStore` に保持して /result へ遷移する。失敗時はエラートーストを表示し
  * 入力は保持したまま選好入力画面に留まる（再試行はボタン再押下）。
  *
- * 選好行列のみの CSV 再取込にも対応する。既存の部署・社員名簿は変更せず、
- * employee_prefs.csv・department_prefs.csv の2ファイルのみを受け付ける
- * （エクスポート→外部で編集→再インポートの往復運用向け）。
+ * 選好行列のみの CSV 再取込・Excel からの貼り付け取込にも対応する。既存の部署・社員名簿は
+ * 変更せず、選好行列だけを置き換える（エクスポート→外部で編集→再インポートの往復運用向け）。
+ *
+ * 選好行列エディタは初回表示時のストアの値だけを読むため、取込が完了したら key を変えて
+ * 再マウントし、取り込んだ内容（と部署ごとモードへ戻した入力方式）を読み直させる。
+ * 再マウントしないと、表示が取込前のまま残り、次の編集で取込内容が上書きされてしまう。
  */
 export function PreferencesPage() {
   const input = useMatchingInputStore((state) => state.input);
@@ -28,6 +31,7 @@ export function PreferencesPage() {
   const runMutation = useRunMatching();
 
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [matrixKey, setMatrixKey] = useState(0);
 
   const isReady = input.capacities.length > 0 && input.proposer_prefs.length > 0;
   if (!isReady) {
@@ -67,7 +71,11 @@ export function PreferencesPage() {
         </p>
       </div>
 
-      <PreferenceMatrix onSubmit={handleSubmit} isSubmitting={runMutation.isPending} />
+      <PreferenceMatrix
+        key={matrixKey}
+        onSubmit={handleSubmit}
+        isSubmitting={runMutation.isPending}
+      />
 
       <div className="flex flex-wrap gap-3">
         <Button asChild variant="outline">
@@ -80,7 +88,7 @@ export function PreferencesPage() {
             setIsImportOpen((open) => !open);
           }}
         >
-          {isImportOpen ? "CSV再取込を閉じる" : "CSVから再取込"}
+          {isImportOpen ? "再取込を閉じる" : "CSV・Excelから再取込"}
         </Button>
       </div>
 
@@ -89,6 +97,7 @@ export function PreferencesPage() {
           mode="preferences"
           onImported={() => {
             setIsImportOpen(false);
+            setMatrixKey((key) => key + 1);
           }}
         />
       ) : null}

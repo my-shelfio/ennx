@@ -8,6 +8,7 @@ import { parseImportFiles } from "../lib/parseImportFiles";
 import { IMPORT_FILE_NAMES } from "../lib/types";
 import type { ImportFileRole, ImportPreview, RawImportFile } from "../lib/types";
 
+import { PastePanel } from "./PastePanel";
 import { TemplateDownloadLinks } from "./TemplateDownloadLinks";
 
 export interface ImportPanelProps {
@@ -36,9 +37,15 @@ async function readFiles(fileList: FileList): Promise<RawImportFile[]> {
   );
 }
 
+type ImportSource = "file" | "paste";
+
 /**
  * CSV一括インポートのパネル（ファイル選択 → 検証 → プレビュー → 確定）。
  * テンプレートのダウンロードもここに配置する。
+ *
+ * 選好入力画面からの再取込（mode = "preferences"）では、ファイル選択に加えて
+ * Excel 等からの貼り付け（選好行列 1 つ分）を選べる。設定ウィザードからの新規取込は
+ * 部署・定員も必要なため、ファイル取込のみとする。
  */
 export function ImportPanel({ mode, onImported }: ImportPanelProps) {
   const input = useMatchingInputStore((state) => state.input);
@@ -48,6 +55,7 @@ export function ImportPanel({ mode, onImported }: ImportPanelProps) {
 
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [isReading, setIsReading] = useState(false);
+  const [source, setSource] = useState<ImportSource>("file");
 
   const allowedRoles = ROLES_BY_MODE[mode];
 
@@ -191,84 +199,116 @@ export function ImportPanel({ mode, onImported }: ImportPanelProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>CSVから取り込む</CardTitle>
+        <CardTitle>{mode === "full" ? "CSVから取り込む" : "CSV・Excelから取り込む"}</CardTitle>
         <CardDescription>
           {mode === "full"
             ? "テンプレートをダウンロードして記入し、settings.csv・employee_prefs.csv・department_prefs.csv の3ファイルを選択してください。"
-            : "テンプレートをダウンロードして記入し、employee_prefs.csv・department_prefs.csv の2ファイルを選択してください（部署・定員は変更されません）。"}
+            : source === "file"
+              ? "テンプレートをダウンロードして記入し、employee_prefs.csv・department_prefs.csv の2ファイルを選択してください（部署・定員は変更されません）。"
+              : "Excel などで希望順位の範囲をコピーし、貼り付けて取り込みます（部署・定員は変更されません）。"}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <TemplateDownloadLinks roles={allowedRoles} />
-
-        <div>
-          <label
-            htmlFor="import-input-file-picker"
-            className="mb-1 block text-sm font-medium text-slate-700"
-          >
-            CSVファイルを選択（複数選択可）
-          </label>
-          <input
-            id="import-input-file-picker"
-            type="file"
-            accept=".csv,text/csv"
-            multiple
-            onChange={(event) => {
-              void handleFilesSelected(event.target.files);
-            }}
-            className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-control file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-700"
-          />
-        </div>
-
-        {isReading ? <p className="text-sm text-slate-500">読み込んでいます…</p> : null}
-
-        {preview !== null ? (
-          <div className="flex flex-col gap-3 rounded-control border border-slate-200 bg-slate-50 p-4 text-sm">
-            <div>
-              <p className="font-semibold text-slate-900">取込内容のプレビュー</p>
-              <p className="text-slate-600">
-                部署数: {preview.departmentNames?.length ?? "-"}件 / 社員数:{" "}
-                {preview.employeeNames?.length ?? "-"}件
-              </p>
-            </div>
-
-            {blockingIssues.length > 0 ? (
-              <div className="rounded-control border border-danger-200 bg-danger-50 p-3">
-                <p className="mb-1 font-semibold text-danger-700">
-                  取り込めません（{blockingIssues.length}件のエラー）
-                </p>
-                <ul className="list-disc space-y-1 pl-5 text-danger-700">
-                  {blockingIssues.map((issue, index) => (
-                    <li key={index}>{issue.message}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            {nonBlockingIssues.length > 0 ? (
-              <div className="rounded-control border border-warning-200 bg-warning-50 p-3">
-                <p className="mb-1 font-semibold text-warning-700">
-                  取り込み後に修正が必要な項目（{nonBlockingIssues.length}件）
-                </p>
-                <ul className="list-disc space-y-1 pl-5 text-warning-700">
-                  {nonBlockingIssues.map((issue, index) => (
-                    <li key={index}>{issue.message}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            <div>
+        {mode === "preferences" ? (
+          <div className="flex gap-2" role="tablist" aria-label="取り込み方法">
+            {(
+              [
+                { value: "file", label: "CSVファイル" },
+                { value: "paste", label: "貼り付け（Excel）" },
+              ] as const
+            ).map((option) => (
               <Button
+                key={option.value}
                 type="button"
-                disabled={!preview.canConfirm || validateMutation.isPending}
-                onClick={handleConfirm}
+                role="tab"
+                aria-selected={source === option.value}
+                variant={source === option.value ? "secondary" : "ghost"}
+                size={null}
+                className="h-11 px-4 text-sm"
+                onClick={() => setSource(option.value)}
               >
-                {validateMutation.isPending ? "取り込み中…" : "この内容で取り込む"}
+                {option.label}
               </Button>
-            </div>
+            ))}
           </div>
         ) : null}
+
+        {source === "paste" && mode === "preferences" ? (
+          <PastePanel onImported={onImported} />
+        ) : (
+          <>
+            <TemplateDownloadLinks roles={allowedRoles} />
+
+            <div>
+              <label
+                htmlFor="import-input-file-picker"
+                className="mb-1 block text-sm font-medium text-slate-700"
+              >
+                CSVファイルを選択（複数選択可）
+              </label>
+              <input
+                id="import-input-file-picker"
+                type="file"
+                accept=".csv,text/csv"
+                multiple
+                onChange={(event) => {
+                  void handleFilesSelected(event.target.files);
+                }}
+                className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-control file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-700"
+              />
+            </div>
+
+            {isReading ? <p className="text-sm text-slate-500">読み込んでいます…</p> : null}
+
+            {preview !== null ? (
+              <div className="flex flex-col gap-3 rounded-control border border-slate-200 bg-slate-50 p-4 text-sm">
+                <div>
+                  <p className="font-semibold text-slate-900">取込内容のプレビュー</p>
+                  <p className="text-slate-600">
+                    部署数: {preview.departmentNames?.length ?? "-"}件 / 社員数:{" "}
+                    {preview.employeeNames?.length ?? "-"}件
+                  </p>
+                </div>
+
+                {blockingIssues.length > 0 ? (
+                  <div className="rounded-control border border-danger-200 bg-danger-50 p-3">
+                    <p className="mb-1 font-semibold text-danger-700">
+                      取り込めません（{blockingIssues.length}件のエラー）
+                    </p>
+                    <ul className="list-disc space-y-1 pl-5 text-danger-700">
+                      {blockingIssues.map((issue, index) => (
+                        <li key={index}>{issue.message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {nonBlockingIssues.length > 0 ? (
+                  <div className="rounded-control border border-warning-200 bg-warning-50 p-3">
+                    <p className="mb-1 font-semibold text-warning-700">
+                      取り込み後に修正が必要な項目（{nonBlockingIssues.length}件）
+                    </p>
+                    <ul className="list-disc space-y-1 pl-5 text-warning-700">
+                      {nonBlockingIssues.map((issue, index) => (
+                        <li key={index}>{issue.message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                <div>
+                  <Button
+                    type="button"
+                    disabled={!preview.canConfirm || validateMutation.isPending}
+                    onClick={handleConfirm}
+                  >
+                    {validateMutation.isPending ? "取り込み中…" : "この内容で取り込む"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </>
+        )}
       </CardContent>
     </Card>
   );
