@@ -42,6 +42,8 @@ const INITIAL_VALUES: VotingCreateFormValues = {
 export interface VotingCreateFormProps {
   /** 作成成功時に呼ばれる(トークン・締切を含む作成結果を渡す)。遷移はページ側に委ねる。 */
   onCreated: (created: VotingSessionCreated) => void;
+  /** フォームの初期値(既存の投票を複製する場合など)。省略時は空のフォームで始める。 */
+  initialValues?: VotingCreateFormValues;
 }
 
 /**
@@ -49,8 +51,8 @@ export interface VotingCreateFormProps {
  * クライアント側検証(`validateVotingCreateForm`)で明らかな不備を弾いた上で
  * `POST /api/v1/voting/sessions` を呼び出す(サーバー側エラーは該当フィールド直下に表示する)。
  */
-export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
-  const [values, setValues] = useState<VotingCreateFormValues>(INITIAL_VALUES);
+export function VotingCreateForm({ onCreated, initialValues }: VotingCreateFormProps) {
+  const [values, setValues] = useState<VotingCreateFormValues>(initialValues ?? INITIAL_VALUES);
   const [errors, setErrors] = useState<VotingCreateFormErrors>({});
   const { toast } = useToast();
   const createMutation = useCreateVotingSession();

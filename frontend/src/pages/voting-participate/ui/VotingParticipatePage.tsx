@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import type { BallotRequestBody } from "../../../entities/voting";
@@ -8,11 +8,28 @@ import {
   useParticipantSession,
   usePublicVotingResults,
 } from "../../../features/voting-participate";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, useToast } from "../../../shared/ui";
+import { cn, formatRemaining, useNow } from "../../../shared/lib";
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  useToast,
+} from "../../../shared/ui";
 import { VotingBallotForm } from "../../../widgets/voting-ballot-form";
 import { VotingResultsPanel } from "../../../widgets/voting-results-panel";
 
 const REFERENCE_NOTICE = "結果は合意形成のための参考情報であり、決議ではありません。";
+/** 残り時間表示の更新間隔。 */
+const REMAINING_REFRESH_MS = 60 * 1000;
+/** 締切到達後、サーバー側で締切済みになるのを待ってから再取得するまでの猶予。 */
+const DEADLINE_REFETCH_DELAY_MS = 1000;
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("ja-JP");
+}
 
 /**
  * 投票参加ページ。
@@ -21,6 +38,8 @@ const REFERENCE_NOTICE = "結果は合意形成のための参考情報であり
  * 「結果は合意形成の参考情報であり決議ではない」旨を常時表示する
  * (非機能要件「投票結果画面に...旨が常に表示されること」を参加画面でも踏襲)。
  * 重複投票の上書き判定はニックネームの完全一致で行う（端末内トークンではない）。
+ * 受付中は締切までの残り時間を1分ごとに更新して表示し(24時間以内は強調)、締切時刻に
+ * 達したらセッションを再取得して締切後の画面へ切り替える。
  */
 export function VotingParticipatePage() {
   const { token } = useParams<{ token: string }>();
@@ -37,6 +56,21 @@ export function VotingParticipatePage() {
     participantToken,
     sessionQuery.data?.results_available === true,
   );
+  const isOpen = sessionQuery.data !== undefined && !sessionQuery.data.is_closed;
+  const now = useNow(REMAINING_REFRESH_MS, isOpen);
+  const openDeadline = isOpen ? sessionQuery.data?.deadline : undefined;
+  const { refetch: refetchSession } = sessionQuery;
+
+  useEffect(() => {
+    if (openDeadline === undefined) {
+      return undefined;
+    }
+    const delay = Math.max(new Date(openDeadline).getTime() - Date.now(), 0);
+    const timer = setTimeout(() => {
+      void refetchSession();
+    }, delay + DEADLINE_REFETCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [openDeadline, refetchSession]);
 
   if (sessionQuery.isLoading) {
     return (
@@ -70,6 +104,7 @@ export function VotingParticipatePage() {
   if (session === undefined) {
     return null;
   }
+  const remaining = formatRemaining(new Date(session.deadline), now);
 
   if (session.is_closed && session.results_available) {
     return (
@@ -111,6 +146,8 @@ export function VotingParticipatePage() {
   }
 
   if (session.is_closed) {
+    // 締切時刻より前に主催者が締め切った場合は、予定の締切日時とあわせてその旨を示す。
+    const closedEarly = new Date(session.deadline).getTime() > now.getTime();
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6">
         <Card>
@@ -118,6 +155,25 @@ export function VotingParticipatePage() {
             <CardTitle>{session.title}</CardTitle>
             <CardDescription>この投票はすでに締め切られています。</CardDescription>
           </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-slate-500">締切</dt>
+              <dd className="text-slate-900">
+                {closedEarly
+                  ? `主催者が締め切りました(予定していた締切: ${formatDateTime(session.deadline)})`
+                  : formatDateTime(session.deadline)}
+              </dd>
+              {session.ballot_count !== null ? (
+                <>
+                  <dt className="text-slate-500">受付件数</dt>
+                  <dd className="text-slate-900">{session.ballot_count}件</dd>
+                </>
+              ) : null}
+            </dl>
+            <p className="rounded-control border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+              この投票の結果は参加者向けには公開されていません。結果や今後の進め方は、投票を依頼した主催者にお問い合わせください。
+            </p>
+          </CardContent>
         </Card>
       </div>
     );
@@ -167,8 +223,12 @@ export function VotingParticipatePage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{session.title}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          締切: {new Date(session.deadline).toLocaleString("ja-JP")}
+        <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+          <span>締切: {formatDateTime(session.deadline)}</span>
+          <span className={cn(remaining.isUrgent && "font-medium text-warning-700")}>
+            ({remaining.text})
+          </span>
+          {remaining.isUrgent ? <Badge variant="warning">締切間近</Badge> : null}
         </p>
       </div>
 
