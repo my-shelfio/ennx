@@ -129,6 +129,88 @@ def test_invalid_create_returns_422_with_field_errors(client: TestClient) -> Non
     assert {"title", "options", "method"} <= fields
 
 
+def test_option_descriptions_are_returned(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/voting/sessions",
+        json={
+            "title": "投票テスト",
+            "options": ["案A", "案B", "案C"],
+            "option_descriptions": ["外部委託。費用は高め", "", "  社内で開発  "],
+            "method": "plurality",
+        },
+    )
+    assert response.status_code == 201
+    tokens = response.json()
+    expected = ["外部委託。費用は高め", "", "社内で開発"]
+    participant = client.get(f"/api/v1/voting/p/{tokens['participant_token']}").json()
+    assert participant["option_descriptions"] == expected
+    admin = client.get(f"/api/v1/voting/a/{tokens['admin_token']}").json()
+    assert admin["option_descriptions"] == expected
+
+
+def test_option_descriptions_default_to_empty(client: TestClient) -> None:
+    tokens = _create_session(client)
+    participant = client.get(f"/api/v1/voting/p/{tokens['participant_token']}").json()
+    assert participant["option_descriptions"] == ["", "", ""]
+
+
+@pytest.mark.parametrize(
+    "descriptions",
+    [
+        pytest.param(["説明A", "説明B"], id="count-mismatch"),
+        pytest.param(["あ" * 201, "", ""], id="too-long"),
+    ],
+)
+def test_invalid_option_descriptions_return_422(
+    client: TestClient, descriptions: list[str]
+) -> None:
+    response = client.post(
+        "/api/v1/voting/sessions",
+        json={
+            "title": "投票テスト",
+            "options": ["案A", "案B", "案C"],
+            "option_descriptions": descriptions,
+            "method": "ranking",
+        },
+    )
+    assert response.status_code == 422
+    assert {e["field"] for e in response.json()["errors"]} == {"option_descriptions"}
+
+
+def test_public_results_contract(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/voting/sessions",
+        json={
+            "title": "投票テスト",
+            "options": ["案A", "案B"],
+            "method": "plurality",
+            "publish_results": True,
+        },
+    )
+    assert response.status_code == 201
+    tokens = response.json()
+    assert tokens["publish_results"] is True
+    p, a = tokens["participant_token"], tokens["admin_token"]
+    assert client.get(f"/api/v1/voting/p/{p}/results").status_code == 404
+    client.post(f"/api/v1/voting/p/{p}/ballots", json={"voter_name": "v1", "choice": 0})
+    assert client.post(f"/api/v1/voting/a/{a}/close").status_code == 204
+
+    public = client.get(f"/api/v1/voting/p/{p}/results")
+    assert public.status_code == 200
+    body = public.json()
+    assert body["ballot_count"] == 1
+    assert "voters" not in body
+
+
+def test_public_results_not_published_returns_404(client: TestClient) -> None:
+    tokens = _create_session(client)
+    p, a = tokens["participant_token"], tokens["admin_token"]
+    assert client.post(f"/api/v1/voting/a/{a}/close").status_code == 204
+    view = client.get(f"/api/v1/voting/p/{p}").json()
+    assert view["results_available"] is False
+    assert client.get(f"/api/v1/voting/p/{p}/results").status_code == 404
+
+
 def test_delete_session(client: TestClient) -> None:
     tokens = _create_session(client)
     assert client.delete(f"/api/v1/voting/a/{tokens['admin_token']}").status_code == 204

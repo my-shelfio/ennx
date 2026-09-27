@@ -29,6 +29,7 @@ from shared.domain.report import ReportItem
 
 from .dto import (
     MAX_LIFETIME_DAYS,
+    MAX_OPTION_DESCRIPTION_LENGTH,
     MAX_OPTION_LENGTH,
     MAX_TITLE_LENGTH,
     MAX_VOTER_NAME_LENGTH,
@@ -37,6 +38,7 @@ from .dto import (
     CastBallotRequest,
     CreateVotingSessionRequest,
     ParticipantSessionView,
+    PublicVotingResults,
     VotingResults,
     VotingSessionCreated,
 )
@@ -59,6 +61,43 @@ def _is_closed(record: VotingSessionRecord, now: datetime) -> bool:
     return record.closed_at is not None or now >= record.deadline
 
 
+def _tally(
+    record: VotingSessionRecord, ballots: list[BallotRecord]
+) -> tuple[RuleResult, list[RuleResult], list[ReportItem]]:
+    """方式に応じて主結果・他ルール比較・性質レポートを算出する。"""
+    num_options = len(record.options)
+    if record.method == "plurality":
+        choices = [
+            choice
+            for choice in (b.content.get("choice") for b in ballots)
+            if isinstance(choice, int)
+        ]
+        primary = tally_plurality(ChoiceTallyInput(num_options=num_options, choices=choices))
+        return primary, [primary], []
+    if record.method == "approval":
+        approvals = [
+            [int(v) for v in a]
+            for a in (b.content.get("approvals") for b in ballots)
+            if isinstance(a, list)
+        ]
+        primary = tally_approval(ApprovalTallyInput(num_options=num_options, approvals=approvals))
+        return primary, [primary], []
+    rankings = [
+        [int(v) for v in r]
+        for r in (b.content.get("ranking") for b in ballots)
+        if isinstance(r, list)
+    ]
+    tally_input = RankingTallyInput(num_options=num_options, rankings=rankings)
+    primary = tally_borda(tally_input)
+    comparison = [
+        tally_plurality(first_choices(tally_input)),
+        primary,
+        tally_condorcet(tally_input),
+    ]
+    report = build_voting_report(tally_input, list(record.options), comparison) if rankings else []
+    return primary, comparison, report
+
+
 class CreateVotingSession:
     """投票セッションを作成する。"""
 
@@ -74,17 +113,24 @@ class CreateVotingSession:
 
         expires_at = now + timedelta(days=MAX_LIFETIME_DAYS)
         deadline = request.deadline if request.deadline is not None else expires_at
+        option_descriptions = (
+            [description.strip() for description in request.option_descriptions]
+            if request.option_descriptions is not None
+            else [""] * len(request.options)
+        )
         record = VotingSessionRecord(
             session_id=str(uuid.uuid4()),
             participant_token=secrets.token_urlsafe(24),
             admin_token=secrets.token_urlsafe(24),
             title=request.title.strip(),
             options=[option.strip() for option in request.options],
+            option_descriptions=option_descriptions,
             method=request.method,
             deadline=deadline,
             expires_at=expires_at,
             created_at=now,
             closed_at=None,
+            publish_results=request.publish_results,
         )
         self._repository.create_session(record)
         return VotingSessionCreated(
@@ -92,6 +138,7 @@ class CreateVotingSession:
             admin_token=record.admin_token,
             deadline=record.deadline,
             expires_at=record.expires_at,
+            publish_results=record.publish_results,
         )
 
     def _validate(self, request: CreateVotingSessionRequest, now: datetime) -> list[FieldError]:
@@ -125,6 +172,26 @@ class CreateVotingSession:
             )
         if len(set(options)) != len(options):
             errors.append(FieldError(field="options", message="選択肢が重複しています"))
+        if request.option_descriptions is not None:
+            if len(request.option_descriptions) != len(options):
+                errors.append(
+                    FieldError(
+                        field="option_descriptions",
+                        message="補足説明は選択肢と同じ件数で指定してください",
+                    )
+                )
+            if any(
+                len(description.strip()) > MAX_OPTION_DESCRIPTION_LENGTH
+                for description in request.option_descriptions
+            ):
+                errors.append(
+                    FieldError(
+                        field="option_descriptions",
+                        message=(
+                            f"補足説明は {MAX_OPTION_DESCRIPTION_LENGTH} 文字以内にしてください"
+                        ),
+                    )
+                )
         if request.method not in VOTING_METHODS:
             errors.append(
                 FieldError(
@@ -159,12 +226,18 @@ class GetParticipantSession:
         record = self._repository.find_by_participant_token(participant_token)
         if record is None:
             raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+        is_closed = _is_closed(record, now)
         return ParticipantSessionView(
             title=record.title,
             options=list(record.options),
+            option_descriptions=list(record.option_descriptions),
             method=record.method,
             deadline=record.deadline,
-            is_closed=_is_closed(record, now),
+            is_closed=is_closed,
+            results_available=is_closed and record.publish_results,
+            ballot_count=(
+                len(self._repository.list_ballots(record.session_id)) if is_closed else None
+            ),
         )
 
 
@@ -263,10 +336,12 @@ class GetAdminSession:
         return AdminSessionView(
             title=record.title,
             options=list(record.options),
+            option_descriptions=list(record.option_descriptions),
             method=record.method,
             deadline=record.deadline,
             expires_at=record.expires_at,
             is_closed=_is_closed(record, now),
+            publish_results=record.publish_results,
             ballot_count=len(ballots),
             participant_token=record.participant_token,
             voters=[b.voter_name for b in ballots],
@@ -288,10 +363,11 @@ class GetVotingResults:
         if not _is_closed(record, now):
             raise VotingNotClosedError("結果は締切後に確認できます")
         ballots = self._repository.list_ballots(record.session_id)
-        primary, comparison, report = self._tally(record, ballots)
+        primary, comparison, report = _tally(record, ballots)
         return VotingResults(
             title=record.title,
             options=list(record.options),
+            option_descriptions=list(record.option_descriptions),
             method=record.method,
             ballot_count=len(ballots),
             primary=primary,
@@ -300,44 +376,36 @@ class GetVotingResults:
             voters=[b.voter_name for b in ballots],
         )
 
-    def _tally(
-        self, record: VotingSessionRecord, ballots: list[BallotRecord]
-    ) -> tuple[RuleResult, list[RuleResult], list[ReportItem]]:
-        num_options = len(record.options)
-        if record.method == "plurality":
-            choices = [
-                choice
-                for choice in (b.content.get("choice") for b in ballots)
-                if isinstance(choice, int)
-            ]
-            primary = tally_plurality(ChoiceTallyInput(num_options=num_options, choices=choices))
-            return primary, [primary], []
-        if record.method == "approval":
-            approvals = [
-                [int(v) for v in a]
-                for a in (b.content.get("approvals") for b in ballots)
-                if isinstance(a, list)
-            ]
-            primary = tally_approval(
-                ApprovalTallyInput(num_options=num_options, approvals=approvals)
-            )
-            return primary, [primary], []
-        rankings = [
-            [int(v) for v in r]
-            for r in (b.content.get("ranking") for b in ballots)
-            if isinstance(r, list)
-        ]
-        tally_input = RankingTallyInput(num_options=num_options, rankings=rankings)
-        primary = tally_borda(tally_input)
-        comparison = [
-            tally_plurality(first_choices(tally_input)),
-            primary,
-            tally_condorcet(tally_input),
-        ]
-        report = (
-            build_voting_report(tally_input, list(record.options), comparison) if rankings else []
+
+class GetPublicVotingResults:
+    """参加用トークンから公開用の集計結果を取得する。
+
+    主催者が作成時に結果公開を選び、かつ締切済みの場合のみ返す。それ以外は
+    投票の存在有無を区別しない（存在秘匿の）未検出として扱う。投票者の
+    ニックネーム一覧は含めない。
+    """
+
+    def __init__(self, repository: VotingRepository) -> None:
+        self._repository = repository
+
+    def execute(self, participant_token: str) -> PublicVotingResults:
+        now = _now()
+        self._repository.purge_expired(now)
+        record = self._repository.find_by_participant_token(participant_token)
+        if record is None or not record.publish_results or not _is_closed(record, now):
+            raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+        ballots = self._repository.list_ballots(record.session_id)
+        primary, comparison, report = _tally(record, ballots)
+        return PublicVotingResults(
+            title=record.title,
+            options=list(record.options),
+            option_descriptions=list(record.option_descriptions),
+            method=record.method,
+            ballot_count=len(ballots),
+            primary=primary,
+            comparison=comparison,
+            report=report,
         )
-        return primary, comparison, report
 
 
 class DeleteVotingSession:

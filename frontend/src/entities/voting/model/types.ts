@@ -13,6 +13,12 @@ export type AdminSession = components["schemas"]["AdminSessionSchema"];
 export type Ballot = components["schemas"]["BallotSchema"];
 export type RuleResult = components["schemas"]["RuleResultSchema"];
 export type VotingResults = components["schemas"]["VotingResultsSchema"];
+/**
+ * 参加者向けに公開される集計結果（投票者のニックネーム一覧を含まない）。
+ * 主催者向けの `VotingResults` はこの型の全項目を含むため、結果表示・エクスポートは
+ * この型で受け取れば両方に使える。
+ */
+export type PublicVotingResults = components["schemas"]["PublicVotingResultsSchema"];
 export type VotingReportItem = components["schemas"]["ReportItemSchema"];
 
 /** 投票方式キー（backend: application/voting/dto.py の VOTING_METHODS と対応）。 */

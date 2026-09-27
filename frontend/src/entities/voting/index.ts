@@ -2,6 +2,7 @@ export type {
   AdminSession,
   Ballot,
   ParticipantSession,
+  PublicVotingResults,
   RuleResult,
   VotingMethod,
   VotingReportItem,
@@ -15,8 +16,10 @@ export type { VotingNicknameStore } from "./model/store";
 export {
   buildBallotRequestBody,
   buildDeadlineIso,
+  buildOptionDescriptions,
   isBallotComplete,
   MAX_DEADLINE_DAYS,
+  MAX_OPTION_DESCRIPTION_LENGTH,
   MAX_OPTION_LENGTH,
   MAX_OPTIONS,
   MAX_TITLE_LENGTH,
@@ -32,3 +35,5 @@ export type {
   VotingCreateFormErrors,
   VotingCreateFormValues,
 } from "./lib/validation";
+export { buildDuplicateFormValues, readDuplicateFormValues } from "./lib/duplicate";
+export type { VotingDuplicateState } from "./lib/duplicate";

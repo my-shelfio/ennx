@@ -20,11 +20,15 @@ class VotingSessionRecord:
     admin_token: str
     title: str
     options: list[str]
+    # 選択肢ごとの補足説明。options と同数で、説明のない選択肢は空文字。
+    option_descriptions: list[str]
     method: str
     deadline: datetime
     expires_at: datetime
     created_at: datetime
     closed_at: datetime | None
+    # 締切後に参加者へ集計結果を公開するか（作成時にのみ設定する）。
+    publish_results: bool
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -14,6 +14,7 @@ from features.voting.application import (
     DeleteVotingSession,
     GetAdminSession,
     GetParticipantSession,
+    GetPublicVotingResults,
     GetVotingResults,
 )
 from features.voting.application.dto import CastBallotRequest, CreateVotingSessionRequest
@@ -64,11 +65,13 @@ class FakeVotingRepository:
             admin_token=record.admin_token,
             title=record.title,
             options=record.options,
+            option_descriptions=record.option_descriptions,
             method=record.method,
             deadline=record.deadline,
             expires_at=record.expires_at,
             created_at=record.created_at,
             closed_at=closed_at,
+            publish_results=record.publish_results,
         )
 
     def delete_session(self, session_id: str) -> None:
@@ -81,13 +84,17 @@ def repository() -> FakeVotingRepository:
     return FakeVotingRepository()
 
 
-def _create(repository: FakeVotingRepository, method: str = "ranking") -> tuple[str, str]:
+def _create(
+    repository: FakeVotingRepository, method: str = "ranking", *, publish_results: bool = False
+) -> tuple[str, str]:
     created = CreateVotingSession(repository).execute(
         CreateVotingSessionRequest(
             title="次期プロジェクト名の選定",
             options=["案A", "案B", "案C"],
+            option_descriptions=None,
             method=method,
             deadline=None,
+            publish_results=publish_results,
         )
     )
     return created.participant_token, created.admin_token
@@ -109,7 +116,12 @@ class TestCreateVotingSession:
         with pytest.raises(InvalidVotingInputError) as exc_info:
             CreateVotingSession(repository).execute(
                 CreateVotingSessionRequest(
-                    title="", options=["案A"], method="unknown", deadline=None
+                    title="",
+                    options=["案A"],
+                    option_descriptions=None,
+                    method="unknown",
+                    deadline=None,
+                    publish_results=False,
                 )
             )
         fields = {e.field for e in exc_info.value.errors}
@@ -121,8 +133,10 @@ class TestCreateVotingSession:
                 CreateVotingSessionRequest(
                     title="t",
                     options=["a", "b"],
+                    option_descriptions=None,
                     method="ranking",
                     deadline=datetime.now(UTC) + timedelta(days=8),
+                    publish_results=False,
                 )
             )
 
@@ -273,6 +287,60 @@ class TestResults:
         assert results.report == []
 
 
+def _cast_rankings(repository: FakeVotingRepository, p_token: str) -> None:
+    cast = CastBallot(repository)
+    for name, ranking in (("v1", [0, 1, 2]), ("v2", [1, 0, 2])):
+        cast.execute(
+            p_token,
+            CastBallotRequest(voter_name=name, choice=None, ranking=ranking, approvals=None),
+        )
+
+
+class TestPublicResults:
+    """参加用トークンからの結果取得は「公開設定あり・締切済み」のときのみ許可する。"""
+
+    def test_not_published_is_hidden_even_after_close(
+        self, repository: FakeVotingRepository
+    ) -> None:
+        p_token, a_token = _create(repository, publish_results=False)
+        _cast_rankings(repository, p_token)
+        CloseVoting(repository).execute(a_token)
+        assert GetParticipantSession(repository).execute(p_token).results_available is False
+        with pytest.raises(VotingSessionNotFoundError):
+            GetPublicVotingResults(repository).execute(p_token)
+
+    def test_published_is_hidden_before_close(self, repository: FakeVotingRepository) -> None:
+        p_token, _ = _create(repository, publish_results=True)
+        _cast_rankings(repository, p_token)
+        view = GetParticipantSession(repository).execute(p_token)
+        assert view.results_available is False
+        assert view.ballot_count is None
+        with pytest.raises(VotingSessionNotFoundError):
+            GetPublicVotingResults(repository).execute(p_token)
+
+    def test_published_is_available_after_close(self, repository: FakeVotingRepository) -> None:
+        p_token, a_token = _create(repository, publish_results=True)
+        _cast_rankings(repository, p_token)
+        CloseVoting(repository).execute(a_token)
+        view = GetParticipantSession(repository).execute(p_token)
+        assert view.results_available is True
+        assert view.ballot_count == 2
+        public = GetPublicVotingResults(repository).execute(p_token)
+        admin = GetVotingResults(repository).execute(a_token)
+        # 集計内容は主催者用と同一で、投票者の一覧だけを含まない。
+        assert public.ballot_count == admin.ballot_count == 2
+        assert public.primary == admin.primary
+        assert public.comparison == admin.comparison
+        assert public.report == admin.report
+        assert not hasattr(public, "voters")
+
+    def test_admin_token_is_not_accepted(self, repository: FakeVotingRepository) -> None:
+        _, a_token = _create(repository, publish_results=True)
+        CloseVoting(repository).execute(a_token)
+        with pytest.raises(VotingSessionNotFoundError):
+            GetPublicVotingResults(repository).execute(a_token)
+
+
 class TestDeleteAndCleanup:
     def test_delete(self, repository: FakeVotingRepository) -> None:
         p_token, a_token = _create(repository)
@@ -289,11 +357,13 @@ class TestDeleteAndCleanup:
             admin_token=record.admin_token,
             title=record.title,
             options=record.options,
+            option_descriptions=record.option_descriptions,
             method=record.method,
             deadline=record.deadline,
             expires_at=datetime.now(UTC) - timedelta(hours=1),
             created_at=record.created_at,
             closed_at=None,
+            publish_results=record.publish_results,
         )
         repository.sessions[record.session_id] = expired
         assert CleanupExpiredSessions(repository).execute() == 1
