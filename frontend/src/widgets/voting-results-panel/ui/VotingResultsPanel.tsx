@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { RuleResult, VotingResults } from "../../../entities/voting";
+import type { PublicVotingResults, RuleResult, VotingResults } from "../../../entities/voting";
 import { RULE_LABELS } from "../../../entities/voting";
 import { ExportVotingResultsMenu } from "../../../features/export-voting-results";
 import {
@@ -19,7 +19,11 @@ import {
 } from "../../../shared/ui";
 
 export interface VotingResultsPanelProps {
-  results: VotingResults;
+  /**
+   * 主催者向け(投票者一覧あり)または参加者向け(投票者一覧なし)の集計結果。
+   * 投票者一覧を含まない結果では「投票者」カードを表示しない。
+   */
+  results: VotingResults | PublicVotingResults;
 }
 
 const REPORT_BADGE: Record<string, { symbol: string; variant: "ok" | "danger" | "neutral" }> = {
@@ -39,6 +43,7 @@ function winnerLabels(rule: RuleResult, options: string[]): string {
  */
 export function VotingResultsPanel({ results }: VotingResultsPanelProps) {
   const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  const voters = "voters" in results ? results.voters : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,28 +60,30 @@ export function VotingResultsPanel({ results }: VotingResultsPanelProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>投票者</CardTitle>
-          <CardDescription>
-            投票済みのニックネーム一覧です。同一ニックネームでの再投票は上書きされる
-            ため、件数は投票数と一致します。
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {results.voters.length === 0 ? (
-            <p className="text-sm text-slate-500">投票者はいません。</p>
-          ) : (
-            <ul className="flex flex-wrap gap-2">
-              {results.voters.map((voter, index) => (
-                <li key={`${voter}-${index}`}>
-                  <Badge variant="neutral">{voter}</Badge>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {voters !== null ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>投票者</CardTitle>
+            <CardDescription>
+              投票済みのニックネーム一覧です。同一ニックネームでの再投票は上書きされる
+              ため、件数は投票数と一致します。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {voters.length === 0 ? (
+              <p className="text-sm text-slate-500">投票者はいません。</p>
+            ) : (
+              <ul className="flex flex-wrap gap-2">
+                {voters.map((voter, index) => (
+                  <li key={`${voter}-${index}`}>
+                    <Badge variant="neutral">{voter}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

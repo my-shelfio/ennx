@@ -8,6 +8,7 @@ from .usecases import (
     DeleteVotingSession,
     GetAdminSession,
     GetParticipantSession,
+    GetPublicVotingResults,
     GetVotingResults,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "DeleteVotingSession",
     "GetAdminSession",
     "GetParticipantSession",
+    "GetPublicVotingResults",
     "GetVotingResults",
 ]

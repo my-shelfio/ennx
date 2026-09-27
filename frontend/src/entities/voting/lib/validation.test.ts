@@ -22,6 +22,7 @@ describe("validateVotingCreateForm", () => {
     optionDescriptions: ["", ""],
     method: "plurality" as const,
     deadlineDays: 7,
+    publishResults: false,
   };
 
   it("有効な入力ではエラーを返さない", () => {

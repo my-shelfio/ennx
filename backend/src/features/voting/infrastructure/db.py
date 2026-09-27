@@ -44,6 +44,9 @@ voting_sessions = sa.Table(
     sa.Column("expires_at", sa.String(40), nullable=False, index=True),
     sa.Column("created_at", sa.String(40), nullable=False),
     sa.Column("closed_at", sa.String(40), nullable=True),
+    # 締切後に参加者へ集計結果を公開するか。列追加前に作成された行は既定値
+    # （公開しない）で埋まる。
+    sa.Column("publish_results", sa.Boolean(), nullable=False, server_default=sa.false()),
 )
 
 voting_ballots = sa.Table(

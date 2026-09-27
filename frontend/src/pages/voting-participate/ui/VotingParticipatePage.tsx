@@ -3,9 +3,16 @@ import { useParams } from "react-router-dom";
 
 import type { BallotRequestBody } from "../../../entities/voting";
 import { useVotingNicknameStore } from "../../../entities/voting";
-import { useCastBallot, useParticipantSession } from "../../../features/voting-participate";
+import {
+  useCastBallot,
+  useParticipantSession,
+  usePublicVotingResults,
+} from "../../../features/voting-participate";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, useToast } from "../../../shared/ui";
 import { VotingBallotForm } from "../../../widgets/voting-ballot-form";
+import { VotingResultsPanel } from "../../../widgets/voting-results-panel";
+
+const REFERENCE_NOTICE = "結果は合意形成のための参考情報であり、決議ではありません。";
 
 /**
  * 投票参加ページ。
@@ -26,6 +33,10 @@ export function VotingParticipatePage() {
 
   const sessionQuery = useParticipantSession(participantToken);
   const castBallotMutation = useCastBallot();
+  const publicResultsQuery = usePublicVotingResults(
+    participantToken,
+    sessionQuery.data?.results_available === true,
+  );
 
   if (sessionQuery.isLoading) {
     return (
@@ -58,6 +69,37 @@ export function VotingParticipatePage() {
   const session = sessionQuery.data;
   if (session === undefined) {
     return null;
+  }
+
+  if (session.is_closed && session.results_available) {
+    return (
+      <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{session.title}</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            この投票は締め切られました。主催者の設定により、集計結果を公開しています。
+          </p>
+        </div>
+
+        <p className="rounded-control border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+          {REFERENCE_NOTICE}参加者のニックネームは公開されません。
+        </p>
+
+        {publicResultsQuery.isLoading ? (
+          <p role="status" className="text-sm text-slate-500">
+            結果を読み込んでいます…
+          </p>
+        ) : null}
+        {publicResultsQuery.isError ? (
+          <p role="alert" className="text-sm text-danger-700">
+            結果を取得できませんでした。時間をおいて再度お試しください。
+          </p>
+        ) : null}
+        {publicResultsQuery.data !== undefined ? (
+          <VotingResultsPanel results={publicResultsQuery.data} />
+        ) : null}
+      </div>
+    );
   }
 
   if (session.is_closed) {
@@ -125,7 +167,7 @@ export function VotingParticipatePage() {
       <p className="rounded-control border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
         投票にはニックネーム（本名でなくても構いません）の入力が必須です。入力した
         ニックネームは主催者に表示されます。同じニックネームで再度投票すると、前回の
-        投票を上書きします。結果は合意形成のための参考情報であり、決議ではありません。
+        投票を上書きします。{REFERENCE_NOTICE}
       </p>
 
       <Card>

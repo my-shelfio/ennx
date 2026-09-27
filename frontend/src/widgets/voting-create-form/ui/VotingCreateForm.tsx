@@ -36,6 +36,7 @@ const INITIAL_VALUES: VotingCreateFormValues = {
   optionDescriptions: ["", ""],
   method: "",
   deadlineDays: 7,
+  publishResults: false,
 };
 
 export interface VotingCreateFormProps {
@@ -70,6 +71,7 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
         option_descriptions: buildOptionDescriptions(values.optionDescriptions),
         method: values.method as VotingMethod,
         deadline: buildDeadlineIso(values.deadlineDays),
+        publish_results: values.publishResults,
       },
       {
         onSuccess: (created) => {
@@ -187,8 +189,29 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
             <FieldErrorText id="voting-deadline-error" message={errors.deadlineDays} />
           </div>
 
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={values.publishResults}
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, publishResults: event.target.checked }))
+              }
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-700">
+                締切後に参加者へ結果を公開する
+              </span>
+              <span className="block text-xs text-slate-500">
+                締切後(または管理画面で締め切った後)、参加者も参加用 URL から集計結果・方式別の比較・性質レポートを閲覧できます。ニックネームの一覧は表示されません。
+              </span>
+            </span>
+          </label>
+
           <p className="rounded-control border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-            発行される参加用 URL を知る人は誰でも投票に参加できます。投票データは作成から最長7日で自動的に削除されます。
+            発行される参加用 URL を知る人は誰でも投票に参加できます。
+            {values.publishResults ? "締切後は同じ URL から結果も閲覧できます。" : ""}
+            投票データは作成から最長7日で自動的に削除されます。
           </p>
 
           <Button type="submit" disabled={createMutation.isPending}>

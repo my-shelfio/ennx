@@ -29,6 +29,8 @@ export interface VotingCreateFormValues {
   optionDescriptions: string[];
   method: VotingMethod | "";
   deadlineDays: number;
+  /** 締切後に参加者へ集計結果を公開するか。 */
+  publishResults: boolean;
 }
 
 export interface VotingCreateFormErrors {

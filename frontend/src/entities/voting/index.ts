@@ -2,6 +2,7 @@ export type {
   AdminSession,
   Ballot,
   ParticipantSession,
+  PublicVotingResults,
   RuleResult,
   VotingMethod,
   VotingReportItem,

@@ -24,6 +24,7 @@ from features.voting.application import (
     DeleteVotingSession,
     GetAdminSession,
     GetParticipantSession,
+    GetPublicVotingResults,
     GetVotingResults,
 )
 from features.voting.application.errors import VotingSessionNotFoundError, VotingUnavailableError
@@ -33,6 +34,7 @@ from features.voting.presentation.schemas import (
     BallotSchema,
     CleanupResponseSchema,
     ParticipantSessionSchema,
+    PublicVotingResultsSchema,
     VotingResultsSchema,
     VotingSessionCreatedSchema,
     VotingSessionCreateSchema,
@@ -99,6 +101,22 @@ def get_participant_session(
 def cast_ballot(participant_token: str, request: BallotSchema, repository: RepositoryDep) -> None:
     """投票を受け付ける（同一ニックネームの再投票は上書き）。"""
     CastBallot(repository).execute(participant_token, request.to_dto())
+
+
+@router.get(
+    "/p/{participant_token}/results",
+    summary="公開された集計結果と性質レポートを取得する（参加者用）",
+    responses=_ERROR_RESPONSES,
+)
+def get_public_results(
+    participant_token: str, repository: RepositoryDep
+) -> PublicVotingResultsSchema:
+    """結果公開の設定があり締切済みの投票について、集計結果を返す（投票者一覧は含めない）。
+
+    公開設定なし・締切前は、投票の存在有無を区別しない 404 を返す。
+    """
+    results = GetPublicVotingResults(repository).execute(participant_token)
+    return PublicVotingResultsSchema.from_dto(results)
 
 
 @router.get(

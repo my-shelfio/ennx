@@ -31,6 +31,9 @@ export function VotingCreatePage() {
             <p className="rounded-control border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
               この URL を知る人は誰でも参加できます。チャットツール等で参加者に配布してください(配布は
               ennx の外で行います)。
+              {created.publish_results
+                ? "参加者も締切後にこの URL から結果を閲覧できます(ニックネームの一覧は表示されません)。"
+                : ""}
             </p>
 
             <div>
