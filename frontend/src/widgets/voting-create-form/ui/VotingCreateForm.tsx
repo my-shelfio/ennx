@@ -15,6 +15,7 @@ import type {
 import { useCreateVotingSession } from "../../../features/voting-create";
 import { cn } from "../../../shared/lib";
 import {
+  Badge,
   Button,
   Card,
   CardContent,
@@ -23,6 +24,12 @@ import {
   CardTitle,
   useToast,
 } from "../../../shared/ui";
+
+import {
+  DECISION_GOAL_OPTIONS,
+  recommendMethod,
+  type DecisionGoal,
+} from "../lib/recommendMethod";
 
 import { FieldErrorText } from "./FieldErrorText";
 import { OptionListField } from "./OptionListField";
@@ -49,8 +56,17 @@ export interface VotingCreateFormProps {
 export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
   const [values, setValues] = useState<VotingCreateFormValues>(INITIAL_VALUES);
   const [errors, setErrors] = useState<VotingCreateFormErrors>({});
+  const [decisionGoal, setDecisionGoal] = useState<DecisionGoal | null>(null);
+  const recommendation = decisionGoal !== null ? recommendMethod(decisionGoal) : null;
   const { toast } = useToast();
   const createMutation = useCreateVotingSession();
+
+  /** 「どう決めたいか」の回答に応じて推奨方式を既定選択する（その後の方式の変更は自由）。 */
+  function handleDecisionGoalSelect(goal: DecisionGoal) {
+    setDecisionGoal(goal);
+    const { method } = recommendMethod(goal);
+    setValues((prev) => ({ ...prev, method }));
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -119,11 +135,48 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
             error={errors.options}
           />
 
+          <fieldset className="min-w-0">
+            <legend className="block text-sm font-medium text-slate-700">
+              どう決めたいですか？（任意）
+            </legend>
+            <p className="mt-1 text-xs text-slate-500">
+              選ぶと、向いている投票方式が選択されます。方式は下で自由に変更できます。
+            </p>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {DECISION_GOAL_OPTIONS.map(({ goal, label }) => (
+                <button
+                  key={goal}
+                  type="button"
+                  aria-pressed={decisionGoal === goal}
+                  className={cn(
+                    "min-h-11 rounded-control border px-4 py-2 text-left text-sm font-medium transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2",
+                    decisionGoal === goal
+                      ? "border-primary-400 bg-primary-50 text-primary-700"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+                  )}
+                  onClick={() => handleDecisionGoalSelect(goal)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {recommendation !== null ? (
+              <p
+                role="status"
+                className="mt-3 rounded-control border border-primary-200 bg-primary-50 px-4 py-3 text-xs text-primary-800"
+              >
+                おすすめ: {VOTING_METHOD_INFO[recommendation.method].label}。{recommendation.reason}
+              </p>
+            ) : null}
+          </fieldset>
+
           <fieldset>
             <legend className="block text-sm font-medium text-slate-700">投票方式</legend>
             <div className="mt-2 flex flex-col gap-3">
               {VOTING_METHODS.map((method) => {
                 const info = VOTING_METHOD_INFO[method];
+                const isRecommended = recommendation?.method === method;
                 return (
                   <label
                     key={method}
@@ -142,11 +195,18 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
                       onChange={() => setValues((prev) => ({ ...prev, method }))}
                       className="mt-1"
                     />
-                    <span>
-                      <span className="block text-sm font-medium text-slate-900">
+                    <span className="flex min-w-0 flex-col gap-1">
+                      <span className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-900">
                         {info.label}
+                        {isRecommended ? <Badge variant="primary">おすすめ</Badge> : null}
                       </span>
                       <span className="block text-xs text-slate-500">{info.description}</span>
+                      <span className="block text-xs text-slate-600">
+                        向いている場面: {info.suitedFor}
+                      </span>
+                      <span className="block text-xs text-slate-600">
+                        参加者の手間: {info.effort}
+                      </span>
                     </span>
                   </label>
                 );
