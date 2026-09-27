@@ -135,7 +135,7 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
             error={errors.options}
           />
 
-          <fieldset>
+          <fieldset className="min-w-0">
             <legend className="block text-sm font-medium text-slate-700">
               どう決めたいですか？(任意)
             </legend>
@@ -144,17 +144,21 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
             </p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               {DECISION_GOAL_OPTIONS.map(({ goal, label }) => (
-                <Button
+                <button
                   key={goal}
                   type="button"
                   aria-pressed={decisionGoal === goal}
-                  variant={decisionGoal === goal ? "secondary" : "outline"}
-                  size={null}
-                  className="min-h-11 whitespace-normal px-4 py-2 text-left text-sm"
+                  className={cn(
+                    "min-h-11 rounded-control border px-4 py-2 text-left text-sm font-medium transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2",
+                    decisionGoal === goal
+                      ? "border-primary-400 bg-primary-50 text-primary-700"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
+                  )}
                   onClick={() => handleDecisionGoalSelect(goal)}
                 >
                   {label}
-                </Button>
+                </button>
               ))}
             </div>
             {recommendation !== null ? (
