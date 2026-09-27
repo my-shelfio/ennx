@@ -1,7 +1,6 @@
 """制約種別 → 内部アルゴリズムのディスパッチ定義と表示メタ情報。
 
 利用者にはアルゴリズム名（da / fda / ca）を意識させず「制約種別」を選ばせる。
-現 Flask 実装の src/app/matching/algorithms_meta.py を application 層へ再配置したもの。
 表示メタ情報は GetConstraintMeta ユースケース経由で `GET /api/v1/meta/constraint-types`
 から配信する。
 """

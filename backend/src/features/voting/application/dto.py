@@ -102,8 +102,8 @@ class CastBallotRequest:
 
 
 @dataclass(frozen=True, kw_only=True)
-class VotingResults:
-    """集計結果（主結果 + 他ルール比較 + 性質レポート）。"""
+class PublicVotingResults:
+    """参加者向けに公開する集計結果（投票者のニックネーム一覧は含めない）。"""
 
     title: str
     options: list[str]
@@ -114,20 +114,12 @@ class VotingResults:
     primary: RuleResult
     comparison: list[RuleResult]
     report: list[ReportItem]
-    # 投票済みニックネームの一覧（投票順）。集計結果画面でも
-    # 「誰が投票したか」を表示できるようにする。
-    voters: list[str]
 
 
 @dataclass(frozen=True, kw_only=True)
-class PublicVotingResults:
-    """参加者向けに公開する集計結果（投票者のニックネーム一覧は含めない）。"""
+class VotingResults(PublicVotingResults):
+    """主催者向けの集計結果（公開用の集計結果 + 投票者一覧）。"""
 
-    title: str
-    options: list[str]
-    option_descriptions: list[str]
-    method: str
-    ballot_count: int
-    primary: RuleResult
-    comparison: list[RuleResult]
-    report: list[ReportItem]
+    # 投票済みニックネームの一覧（投票順）。集計結果画面でも
+    # 「誰が投票したか」を表示できるようにする。
+    voters: list[str]

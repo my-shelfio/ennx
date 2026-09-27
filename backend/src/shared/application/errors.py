@@ -1,8 +1,7 @@
 """feature 横断のユースケースエラー基底。
 
-各 feature の application 層エラー（matching の InvalidMatchingInputError、
-voting の VotingError 系）が共通で継承する基底クラスと、フィールド単位の
-入力エラーを表す FieldError を置く。
+各 feature の application 層エラーが共通で継承する基底クラス（ApplicationError・
+InvalidInputError）と、フィールド単位の入力エラーを表す FieldError を置く。
 """
 
 from __future__ import annotations
@@ -26,3 +25,15 @@ class FieldError:
 
 class ApplicationError(Exception):
     """application 層のエラーの基底クラス（feature 共通）。"""
+
+
+class InvalidInputError(ApplicationError):
+    """入力が不正であることを表すユースケースエラーの基底（→ 422）。
+
+    フィールド単位のエラー一覧を保持し、メッセージは各エラーを「／」で連結する。
+    presentation 層は `errors` を RFC 9457 の `errors[]` へそのままマッピングできる。
+    """
+
+    def __init__(self, errors: list[FieldError]) -> None:
+        super().__init__("／".join(e.message for e in errors))
+        self.errors = errors

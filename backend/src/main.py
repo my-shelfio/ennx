@@ -1,6 +1,5 @@
 """FastAPI アプリファクトリ（合成ルート）。
 
-Flask のアプリファクトリ（src/app/__init__.py: create_app）と同様、
 テスト・本番でアプリ生成を共通化する。起動例:
 
     uv run uvicorn --app-dir backend/src "main:create_app" --factory

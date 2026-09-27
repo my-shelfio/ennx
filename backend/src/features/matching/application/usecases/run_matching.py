@@ -9,8 +9,8 @@ from __future__ import annotations
 from features.matching.application.assembly import (
     build_domain_input,
     build_report,
+    display_names,
     execute_algorithm,
-    resolve_names,
 )
 from features.matching.application.dto.requests import MatchingRequest
 from features.matching.application.dto.results import MatchingEventDTO, MatchingOutcome
@@ -30,7 +30,7 @@ class RunMatching:
         matching_input = build_domain_input(request)
         algorithm = algorithm_for_constraint_type(request.constraint_type)
         result = execute_algorithm(algorithm, matching_input)
-        emp_names, dep_names = resolve_names(request)
+        emp_names, dep_names = display_names(matching_input)
 
         unmatched = [i for i, dep in enumerate(result.proposer_match) if dep == -1]
         events = [
@@ -54,7 +54,7 @@ class RunMatching:
             proposer_match=list(result.proposer_match),
             receiver_match=[list(matched) for matched in result.receiver_match],
             unmatched=unmatched,
-            report=build_report(algorithm, request, result),
+            report=build_report(request, matching_input, result),
             cutoff=cutoff,
             events=events,
         )

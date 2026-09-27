@@ -18,7 +18,6 @@ from features.voting.application.dto import (
     VotingResults,
     VotingSessionCreated,
 )
-from features.voting.domain import RuleResult
 from shared.presentation.schemas import ReportItemSchema
 
 
@@ -185,19 +184,9 @@ class RuleResultSchema(BaseModel):
     ranking: list[int] = Field(description="スコア降順の選択肢番号列")
     winners: list[int] = Field(description="最高スコアの選択肢番号（同点含む）")
 
-    @classmethod
-    def from_domain(cls, result: RuleResult) -> RuleResultSchema:
-        """ドメインの RuleResult から組み立てる。"""
-        return cls(
-            rule=result.rule,
-            scores=result.scores,
-            ranking=result.ranking,
-            winners=result.winners,
-        )
 
-
-class VotingResultsSchema(BaseModel):
-    """集計結果のレスポンス（主結果 + 他ルール比較 + 性質レポート）。"""
+class _PublicResultsFields(BaseModel):
+    """公開用・主催者用の集計結果スキーマに共通するフィールド。"""
 
     title: str
     options: list[str]
@@ -209,57 +198,26 @@ class VotingResultsSchema(BaseModel):
     primary: RuleResultSchema
     comparison: list[RuleResultSchema]
     report: list[ReportItemSchema]
+
+
+class PublicVotingResultsSchema(_PublicResultsFields):
+    """参加者向けに公開する集計結果（投票者のニックネーム一覧は含めない）。"""
+
+    @classmethod
+    def from_dto(cls, dto: PublicVotingResults) -> PublicVotingResultsSchema:
+        """application 層の DTO から組み立てる。"""
+        return cls.model_validate(dto, from_attributes=True)
+
+
+class VotingResultsSchema(_PublicResultsFields):
+    """集計結果のレスポンス（主結果 + 他ルール比較 + 性質レポート）。"""
+
     voters: list[str] = Field(description="投票済みニックネームの一覧（投票順）")
 
     @classmethod
     def from_dto(cls, dto: VotingResults) -> VotingResultsSchema:
         """application 層の DTO から組み立てる。"""
-        return cls(
-            title=dto.title,
-            options=dto.options,
-            option_descriptions=list(dto.option_descriptions),
-            method=dto.method,
-            ballot_count=dto.ballot_count,
-            primary=RuleResultSchema.from_domain(dto.primary),
-            comparison=[RuleResultSchema.from_domain(r) for r in dto.comparison],
-            report=[
-                ReportItemSchema(label=item.label, status=item.status, detail=item.detail)
-                for item in dto.report
-            ],
-            voters=list(dto.voters),
-        )
-
-
-class PublicVotingResultsSchema(BaseModel):
-    """参加者向けに公開する集計結果（投票者のニックネーム一覧は含めない）。"""
-
-    title: str
-    options: list[str]
-    option_descriptions: list[str] = Field(
-        description="選択肢ごとの補足説明（options と同数。説明なしは空文字）"
-    )
-    method: str
-    ballot_count: int
-    primary: RuleResultSchema
-    comparison: list[RuleResultSchema]
-    report: list[ReportItemSchema]
-
-    @classmethod
-    def from_dto(cls, dto: PublicVotingResults) -> PublicVotingResultsSchema:
-        """application 層の DTO から組み立てる。"""
-        return cls(
-            title=dto.title,
-            options=dto.options,
-            option_descriptions=list(dto.option_descriptions),
-            method=dto.method,
-            ballot_count=dto.ballot_count,
-            primary=RuleResultSchema.from_domain(dto.primary),
-            comparison=[RuleResultSchema.from_domain(r) for r in dto.comparison],
-            report=[
-                ReportItemSchema(label=item.label, status=item.status, detail=item.detail)
-                for item in dto.report
-            ],
-        )
+        return cls.model_validate(dto, from_attributes=True)
 
 
 class CleanupResponseSchema(BaseModel):

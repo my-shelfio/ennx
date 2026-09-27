@@ -5,7 +5,7 @@ presentation 層が HTTP ステータスへマッピングする（404 / 409 / 4
 
 from __future__ import annotations
 
-from shared.application.errors import ApplicationError, FieldError
+from shared.application.errors import ApplicationError, InvalidInputError
 
 
 class VotingError(ApplicationError):
@@ -31,9 +31,5 @@ class VotingNotClosedError(VotingError):
     """締切前の結果取得（→ 409）。"""
 
 
-class InvalidVotingInputError(VotingError):
+class InvalidVotingInputError(VotingError, InvalidInputError):
     """投票入力が不正であることを表すユースケースエラー（→ 422）。"""
-
-    def __init__(self, errors: list[FieldError]) -> None:
-        super().__init__("／".join(e.message for e in errors))
-        self.errors = errors

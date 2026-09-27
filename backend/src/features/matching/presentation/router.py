@@ -9,8 +9,6 @@ prefix（/api/v1 等）は backend/src/api/vN/router.py が include 時に付与
 
 from __future__ import annotations
 
-import os
-
 from fastapi import APIRouter, Query, status
 
 from features.matching.application.usecases import (
@@ -32,7 +30,6 @@ from features.matching.presentation.schemas.matching import (
     SampleSummarySchema,
     ValidateResponse,
 )
-from features.matching.presentation.schemas.meta import AnalyticsConfigResponse
 from shared.presentation.errors import ProblemDetail
 
 router = APIRouter()
@@ -40,8 +37,6 @@ router = APIRouter()
 _matching_router = APIRouter(prefix="/matching", tags=["matching"])
 _meta_router = APIRouter(prefix="/meta", tags=["meta"])
 _sample_router = APIRouter(tags=["sample"])
-
-_GA_MEASUREMENT_ID_ENV = "ENNX_GA_MEASUREMENT_ID"
 
 
 @_matching_router.post(
@@ -92,17 +87,6 @@ def get_ca_constraint_types() -> CaConstraintMetaListResponse:
     return CaConstraintMetaListResponse(
         ca_constraint_types=[CaConstraintMetaSchema.from_dto(meta) for meta in metas]
     )
-
-
-@_meta_router.get("/analytics-config", summary="アクセス解析設定を取得する")
-def get_analytics_config() -> AnalyticsConfigResponse:
-    """GA4 測定 ID を返す。
-
-    環境変数 `ENNX_GA_MEASUREMENT_ID` は本番の Render サービスにのみ設定する
-    運用とし、開発環境・ローカルでは未設定のまま null を返して計測を無効化する。
-    """
-    measurement_id = os.environ.get(_GA_MEASUREMENT_ID_ENV) or None
-    return AnalyticsConfigResponse(ga_measurement_id=measurement_id)
 
 
 @_sample_router.get(

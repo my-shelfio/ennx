@@ -73,14 +73,6 @@ class BaseMatchingInput:
         """受入者数。"""
         return len(self.receiver_prefs)
 
-    def p_name(self, i: int) -> str:
-        """提案者 i（0-indexed）の表示名を返す。"""
-        return self.proposer_names[i] if self.proposer_names else f"P{i + 1}"
-
-    def r_name(self, j: int) -> str:
-        """受入者 j（0-indexed）の表示名を返す。"""
-        return self.receiver_names[j] if self.receiver_names else f"R{j + 1}"
-
 
 @dataclass(frozen=True, kw_only=True)
 class DAInput(BaseMatchingInput):

@@ -1,12 +1,15 @@
 """feature 横断の Pydantic スキーマ（境界変換専用）。
 
 FieldErrorSchema（入力エラー 1 件）・ReportItemSchema（性質レポート 1 項目）は
-matching・voting 双方のレスポンススキーマ・エラーハンドラが共通で使う。
+各 feature のレスポンススキーマ・エラーハンドラが共通で使う。
 """
 
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
+
+from shared.application.errors import FieldError
+from shared.domain.report import ReportItem
 
 
 class FieldErrorSchema(BaseModel):
@@ -14,6 +17,11 @@ class FieldErrorSchema(BaseModel):
 
     field: str | None = Field(description="エラーの発生フィールド（特定できない場合は null）")
     message: str = Field(description="利用者向けの日本語エラーメッセージ")
+
+    @classmethod
+    def from_domain(cls, error: FieldError) -> FieldErrorSchema:
+        """application 層の FieldError から組み立てる。"""
+        return cls(field=error.field, message=error.message)
 
 
 class ReportItemSchema(BaseModel):
@@ -29,3 +37,13 @@ class ReportItemSchema(BaseModel):
             "各要素は [社員 0-index, 部署 0-index]。該当しない性質・違反なしの場合は空配列。"
         ),
     )
+
+    @classmethod
+    def from_domain(cls, item: ReportItem) -> ReportItemSchema:
+        """ドメインの ReportItem から組み立てる。"""
+        return cls(
+            label=item.label,
+            status=item.status,
+            detail=item.detail,
+            blocking_pairs=[list(pair) for pair in item.blocking_pairs],
+        )

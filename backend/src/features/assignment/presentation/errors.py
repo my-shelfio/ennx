@@ -22,5 +22,5 @@ def register_assignment_error_handlers(app: FastAPI) -> None:
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             title="入力が不正です",
             detail="割り当て入力の検証でエラーが見つかりました。",
-            errors=[FieldErrorSchema(field=e.field, message=e.message) for e in exc.errors],
+            errors=[FieldErrorSchema.from_domain(e) for e in exc.errors],
         )

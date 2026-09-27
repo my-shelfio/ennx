@@ -199,7 +199,7 @@ class TestWeakStability:
 
 
 class TestBlockingPairsStructured:
-    """CheckResult.blocking_pairs（構造化データ、#119 A-6）の検証。"""
+    """CheckResult.blocking_pairs（構造化データ）の検証。"""
 
     def test_no_blocking_pair_result_pairs_align_with_violations(self) -> None:
         """check_no_blocking_pair は違反件数と同数のブロッキングペアを返す。"""

@@ -4,6 +4,6 @@
 制約種別 → アルゴリズムのディスパッチはこの層に置く。domain のみに依存し、
 presentation / infrastructure に依存してはならない。
 
-- `application/usecases/`: RunMatching / ValidateInput / GetSample / GetConstraintMeta
+- `application/usecases/`: ユースケース（1 クラス 1 ファイル）
 - `application/dto/`: ユースケース入出力 DTO
 """
