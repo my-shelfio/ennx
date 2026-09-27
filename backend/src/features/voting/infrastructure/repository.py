@@ -42,6 +42,7 @@ def _record_from_row(row: Row[tuple[object, ...]]) -> VotingSessionRecord:
         expires_at=_from_text(str(mapping["expires_at"])),
         created_at=_from_text(str(mapping["created_at"])),
         closed_at=_from_text(str(closed_at)) if closed_at is not None else None,
+        publish_results=bool(mapping["publish_results"]),
     )
 
 
@@ -83,6 +84,7 @@ class SqlVotingRepository:
                     expires_at=_to_text(record.expires_at),
                     created_at=_to_text(record.created_at),
                     closed_at=None,
+                    publish_results=record.publish_results,
                 )
             )
 

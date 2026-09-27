@@ -2,6 +2,7 @@ export type {
   AdminSession,
   Ballot,
   ParticipantSession,
+  PublicVotingResults,
   RuleResult,
   VotingMethod,
   VotingReportItem,
@@ -34,3 +35,5 @@ export type {
   VotingCreateFormErrors,
   VotingCreateFormValues,
 } from "./lib/validation";
+export { buildDuplicateFormValues, readDuplicateFormValues } from "./lib/duplicate";
+export type { VotingDuplicateState } from "./lib/duplicate";

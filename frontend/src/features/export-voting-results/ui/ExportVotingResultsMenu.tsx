@@ -1,13 +1,13 @@
 import { useState } from "react";
 
-import type { VotingResults } from "../../../entities/voting";
+import type { PublicVotingResults } from "../../../entities/voting";
 import { downloadFile, UTF8_BOM } from "../../../shared/lib";
 import { Button, useToast } from "../../../shared/ui";
 import { buildVotingResultsCsv } from "../lib/buildCsvExport";
 import { buildVotingResultsJsonExport } from "../lib/buildJsonExport";
 
 export interface ExportVotingResultsMenuProps {
-  results: VotingResults;
+  results: PublicVotingResults;
 }
 
 function formatTimestamp(date: Date): string {

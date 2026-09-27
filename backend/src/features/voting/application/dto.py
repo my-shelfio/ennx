@@ -34,6 +34,8 @@ class CreateVotingSessionRequest:
     option_descriptions: list[str] | None
     method: str
     deadline: datetime | None
+    # 締切後に参加者（参加用トークン）へ集計結果・性質レポートを公開するか。
+    publish_results: bool
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -44,6 +46,7 @@ class VotingSessionCreated:
     admin_token: str
     deadline: datetime
     expires_at: datetime
+    publish_results: bool
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -57,6 +60,10 @@ class ParticipantSessionView:
     method: str
     deadline: datetime
     is_closed: bool
+    # 締切済みかつ結果公開の設定がある場合に True（参加用トークンで結果を取得できる）。
+    results_available: bool
+    # 受け付けた投票数。締切後のみ公開し、締切前は None とする。
+    ballot_count: int | None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -71,6 +78,7 @@ class AdminSessionView:
     deadline: datetime
     expires_at: datetime
     is_closed: bool
+    publish_results: bool
     ballot_count: int
     participant_token: str
     # 投票済みニックネームの一覧（投票順）。主催者が「誰が投票したか」を
@@ -109,3 +117,17 @@ class VotingResults:
     # 投票済みニックネームの一覧（投票順）。集計結果画面でも
     # 「誰が投票したか」を表示できるようにする。
     voters: list[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class PublicVotingResults:
+    """参加者向けに公開する集計結果（投票者のニックネーム一覧は含めない）。"""
+
+    title: str
+    options: list[str]
+    option_descriptions: list[str]
+    method: str
+    ballot_count: int
+    primary: RuleResult
+    comparison: list[RuleResult]
+    report: list[ReportItem]

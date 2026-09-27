@@ -39,6 +39,7 @@ def _record(session_id: str = "s1", *, expires_in_hours: int = 24) -> VotingSess
         expires_at=now + timedelta(hours=expires_in_hours),
         created_at=now,
         closed_at=None,
+        publish_results=False,
     )
 
 

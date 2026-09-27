@@ -27,6 +27,8 @@ class VotingSessionRecord:
     expires_at: datetime
     created_at: datetime
     closed_at: datetime | None
+    # 締切後に参加者へ集計結果を公開するか（作成時にのみ設定する）。
+    publish_results: bool
 
 
 @dataclass(frozen=True, kw_only=True)

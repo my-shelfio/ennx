@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
+import { readDuplicateFormValues } from "../../../entities/voting";
 import type { VotingSessionCreated } from "../../../entities/voting";
 import { buildVotingManageUrl, buildVotingParticipateUrl } from "../../../shared/config";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../shared/ui";
@@ -10,9 +11,12 @@ import { VotingCreateForm } from "../../../widgets/voting-create-form";
  * 投票作成ページ。
  * 作成成功後は同ページ内で参加用・管理用 URL と有効期限を、注意書きとともに表示する。
  * 管理用 URL への遷移はリンクとして提供し、ここから管理画面(VotingManagePage)へ進める。
+ * 主催者画面から複製して遷移した場合は、ルーター state の値を入力済みにしてフォームを開く。
  */
 export function VotingCreatePage() {
   const [created, setCreated] = useState<VotingSessionCreated | null>(null);
+  const location = useLocation();
+  const [duplicateValues] = useState(() => readDuplicateFormValues(location.state));
 
   if (created !== null) {
     const participateUrl = `${window.location.origin}${buildVotingParticipateUrl(created.participant_token)}`;
@@ -31,6 +35,9 @@ export function VotingCreatePage() {
             <p className="rounded-control border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
               この URL を知る人は誰でも参加できます。チャットツール等で参加者に配布してください(配布は
               ennx の外で行います)。
+              {created.publish_results
+                ? "参加者も締切後にこの URL から結果を閲覧できます(ニックネームの一覧は表示されません)。"
+                : ""}
             </p>
 
             <div>
@@ -68,7 +75,16 @@ export function VotingCreatePage() {
           複数案から1つを選ぶ意思決定を、投票ルールごとの結果と性質つきで可視化します。
         </p>
       </div>
-      <VotingCreateForm onCreated={setCreated} />
+      {duplicateValues !== null ? (
+        <p className="rounded-control border border-primary-200 bg-primary-50 px-4 py-3 text-xs text-primary-800">
+          既存の投票「{duplicateValues.title}」の内容を入力済みです。票は引き継がれず、新しい参加用・管理用
+          URL が発行されます。締切は既定の{duplicateValues.deadlineDays}日後に戻しています。
+        </p>
+      ) : null}
+      <VotingCreateForm
+        onCreated={setCreated}
+        {...(duplicateValues !== null ? { initialValues: duplicateValues } : {})}
+      />
     </div>
   );
 }

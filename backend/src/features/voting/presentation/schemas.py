@@ -14,6 +14,7 @@ from features.voting.application.dto import (
     CastBallotRequest,
     CreateVotingSessionRequest,
     ParticipantSessionView,
+    PublicVotingResults,
     VotingResults,
     VotingSessionCreated,
 )
@@ -38,6 +39,10 @@ class VotingSessionCreateSchema(BaseModel):
     )
     method: str = Field(description="投票方式（plurality / approval / ranking）")
     deadline: datetime | None = Field(default=None, description="締切（省略時は作成から 7 日後）")
+    publish_results: bool = Field(
+        default=False,
+        description="締切後に参加者（参加用 URL）へ集計結果・性質レポートを公開するか",
+    )
 
     def to_dto(self) -> CreateVotingSessionRequest:
         """application 層の DTO へ変換する。"""
@@ -49,6 +54,7 @@ class VotingSessionCreateSchema(BaseModel):
             ),
             method=self.method,
             deadline=self.deadline,
+            publish_results=self.publish_results,
         )
 
 
@@ -59,6 +65,7 @@ class VotingSessionCreatedSchema(BaseModel):
     admin_token: str = Field(description="管理用 URL トークン")
     deadline: datetime = Field(description="投票の締切（UTC）")
     expires_at: datetime = Field(description="データの自動削除日時（UTC、作成から 7 日）")
+    publish_results: bool = Field(description="締切後に参加者へ結果を公開する設定か")
 
     @classmethod
     def from_dto(cls, dto: VotingSessionCreated) -> VotingSessionCreatedSchema:
@@ -68,6 +75,7 @@ class VotingSessionCreatedSchema(BaseModel):
             admin_token=dto.admin_token,
             deadline=dto.deadline,
             expires_at=dto.expires_at,
+            publish_results=dto.publish_results,
         )
 
 
@@ -82,6 +90,10 @@ class ParticipantSessionSchema(BaseModel):
     method: str
     deadline: datetime
     is_closed: bool = Field(description="締切済み（投票不可）かどうか")
+    results_available: bool = Field(
+        description="参加用トークンで集計結果を取得できるか（締切済みかつ結果公開の設定あり）"
+    )
+    ballot_count: int | None = Field(description="受け付けた投票数（締切後のみ。締切前は null）")
 
     @classmethod
     def from_dto(cls, dto: ParticipantSessionView) -> ParticipantSessionSchema:
@@ -93,6 +105,8 @@ class ParticipantSessionSchema(BaseModel):
             method=dto.method,
             deadline=dto.deadline,
             is_closed=dto.is_closed,
+            results_available=dto.results_available,
+            ballot_count=dto.ballot_count,
         )
 
 
@@ -108,6 +122,7 @@ class AdminSessionSchema(BaseModel):
     deadline: datetime
     expires_at: datetime
     is_closed: bool
+    publish_results: bool = Field(description="締切後に参加者へ結果を公開する設定か")
     ballot_count: int = Field(description="受け付けた投票数")
     participant_token: str = Field(description="参加用 URL トークン（再表示用）")
     voters: list[str] = Field(description="投票済みニックネームの一覧（投票順）")
@@ -123,6 +138,7 @@ class AdminSessionSchema(BaseModel):
             deadline=dto.deadline,
             expires_at=dto.expires_at,
             is_closed=dto.is_closed,
+            publish_results=dto.publish_results,
             ballot_count=dto.ballot_count,
             participant_token=dto.participant_token,
             voters=list(dto.voters),
@@ -211,6 +227,38 @@ class VotingResultsSchema(BaseModel):
                 for item in dto.report
             ],
             voters=list(dto.voters),
+        )
+
+
+class PublicVotingResultsSchema(BaseModel):
+    """参加者向けに公開する集計結果（投票者のニックネーム一覧は含めない）。"""
+
+    title: str
+    options: list[str]
+    option_descriptions: list[str] = Field(
+        description="選択肢ごとの補足説明（options と同数。説明なしは空文字）"
+    )
+    method: str
+    ballot_count: int
+    primary: RuleResultSchema
+    comparison: list[RuleResultSchema]
+    report: list[ReportItemSchema]
+
+    @classmethod
+    def from_dto(cls, dto: PublicVotingResults) -> PublicVotingResultsSchema:
+        """application 層の DTO から組み立てる。"""
+        return cls(
+            title=dto.title,
+            options=dto.options,
+            option_descriptions=list(dto.option_descriptions),
+            method=dto.method,
+            ballot_count=dto.ballot_count,
+            primary=RuleResultSchema.from_domain(dto.primary),
+            comparison=[RuleResultSchema.from_domain(r) for r in dto.comparison],
+            report=[
+                ReportItemSchema(label=item.label, status=item.status, detail=item.detail)
+                for item in dto.report
+            ],
         )
 
 
