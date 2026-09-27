@@ -1,14 +1,12 @@
 """CA 制約の application 層レジストリ。
 
-現 Flask 実装の src/app/matching/constraints.py から、フォーム依存
-（Flask-WTF / WTForms）を除いたコア部分（パラメータ検証・Constraint 関数生成・
-性質レポート項目生成）を再配置したもの。
+パラメータ検証・Constraint 関数生成・性質レポート項目生成を制約種別ごとに登録する。
 
 新しい制約種別を追加する手順:
     1. validate_params / build_constraints / build_report_item を実装する
     2. `ConstraintSpec` を組み立て、`CA_CONSTRAINT_SPECS` に追加する
 
-制約は backend/src/domain/matching/ca.py の前提どおり、遺伝性（実行可能な
+制約は features/matching/domain/ca.py の前提どおり、遺伝性（実行可能な
 集合の任意の部分集合も実行可能）を満たす上限制約に限る。
 パラメータは `ConstraintEntry.params`（例: {"pairs": [[0, 1]]}、0-indexed）で受け取る。
 """

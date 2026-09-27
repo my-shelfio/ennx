@@ -43,7 +43,7 @@ dev = [
     "mypy>=1.11",
     "pytest>=8",
     "pre-commit>=3.7",
-    # プロパティテスト（#8）。slow マーカーを付与し、pre-commit では除外・CI では実行する。
+    # プロパティテスト。slow マーカーを付与し、pre-commit では除外・CI では実行する。
     "hypothesis>=6",
     # 層依存契約の機械的検証。CI・pre-commit で lint-imports を実行する。
     "import-linter>=2",

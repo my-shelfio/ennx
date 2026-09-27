@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime
 
 from features.voting.domain import RuleResult
@@ -102,8 +102,8 @@ class CastBallotRequest:
 
 
 @dataclass(frozen=True, kw_only=True)
-class VotingResults:
-    """集計結果（主結果 + 他ルール比較 + 性質レポート）。"""
+class PublicVotingResults:
+    """参加者向けに公開する集計結果（投票者のニックネーム一覧は含めない）。"""
 
     title: str
     options: list[str]
@@ -114,20 +114,17 @@ class VotingResults:
     primary: RuleResult
     comparison: list[RuleResult]
     report: list[ReportItem]
+
+
+@dataclass(frozen=True, kw_only=True)
+class VotingResults(PublicVotingResults):
+    """主催者向けの集計結果（公開用の集計結果 + 投票者一覧）。"""
+
     # 投票済みニックネームの一覧（投票順）。集計結果画面でも
     # 「誰が投票したか」を表示できるようにする。
     voters: list[str]
 
-
-@dataclass(frozen=True, kw_only=True)
-class PublicVotingResults:
-    """参加者向けに公開する集計結果（投票者のニックネーム一覧は含めない）。"""
-
-    title: str
-    options: list[str]
-    option_descriptions: list[str]
-    method: str
-    ballot_count: int
-    primary: RuleResult
-    comparison: list[RuleResult]
-    report: list[ReportItem]
+    @classmethod
+    def from_public(cls, public: PublicVotingResults, voters: list[str]) -> VotingResults:
+        """公開用の集計結果に投票者一覧を加えて組み立てる。"""
+        return cls(**{f.name: getattr(public, f.name) for f in fields(public)}, voters=voters)

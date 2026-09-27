@@ -61,6 +61,28 @@ def _is_closed(record: VotingSessionRecord, now: datetime) -> bool:
     return record.closed_at is not None or now >= record.deadline
 
 
+def _find_by_participant_token(
+    repository: VotingRepository, participant_token: str, now: datetime
+) -> VotingSessionRecord:
+    """期限切れを削除したうえで参加用トークンのセッションを返す（無ければ未検出）。"""
+    repository.purge_expired(now)
+    record = repository.find_by_participant_token(participant_token)
+    if record is None:
+        raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+    return record
+
+
+def _find_by_admin_token(
+    repository: VotingRepository, admin_token: str, now: datetime
+) -> VotingSessionRecord:
+    """期限切れを削除したうえで管理用トークンのセッションを返す（無ければ未検出）。"""
+    repository.purge_expired(now)
+    record = repository.find_by_admin_token(admin_token)
+    if record is None:
+        raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+    return record
+
+
 def _tally(
     record: VotingSessionRecord, ballots: list[BallotRecord]
 ) -> tuple[RuleResult, list[RuleResult], list[ReportItem]]:
@@ -96,6 +118,23 @@ def _tally(
     ]
     report = build_voting_report(tally_input, list(record.options), comparison) if rankings else []
     return primary, comparison, report
+
+
+def _build_public_results(
+    record: VotingSessionRecord, ballots: list[BallotRecord]
+) -> PublicVotingResults:
+    """集計結果（投票者一覧を除く）の DTO を組み立てる。"""
+    primary, comparison, report = _tally(record, ballots)
+    return PublicVotingResults(
+        title=record.title,
+        options=list(record.options),
+        option_descriptions=list(record.option_descriptions),
+        method=record.method,
+        ballot_count=len(ballots),
+        primary=primary,
+        comparison=comparison,
+        report=report,
+    )
 
 
 class CreateVotingSession:
@@ -222,10 +261,7 @@ class GetParticipantSession:
 
     def execute(self, participant_token: str) -> ParticipantSessionView:
         now = _now()
-        self._repository.purge_expired(now)
-        record = self._repository.find_by_participant_token(participant_token)
-        if record is None:
-            raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+        record = _find_by_participant_token(self._repository, participant_token, now)
         is_closed = _is_closed(record, now)
         return ParticipantSessionView(
             title=record.title,
@@ -249,10 +285,7 @@ class CastBallot:
 
     def execute(self, participant_token: str, request: CastBallotRequest) -> None:
         now = _now()
-        self._repository.purge_expired(now)
-        record = self._repository.find_by_participant_token(participant_token)
-        if record is None:
-            raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+        record = _find_by_participant_token(self._repository, participant_token, now)
         if _is_closed(record, now):
             raise VotingClosedError("この投票は締め切られています")
         content = self._validate_content(record, request)
@@ -312,10 +345,7 @@ class CloseVoting:
 
     def execute(self, admin_token: str) -> None:
         now = _now()
-        self._repository.purge_expired(now)
-        record = self._repository.find_by_admin_token(admin_token)
-        if record is None:
-            raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+        record = _find_by_admin_token(self._repository, admin_token, now)
         if record.closed_at is None:
             self._repository.close_session(record.session_id, now)
 
@@ -328,10 +358,7 @@ class GetAdminSession:
 
     def execute(self, admin_token: str) -> AdminSessionView:
         now = _now()
-        self._repository.purge_expired(now)
-        record = self._repository.find_by_admin_token(admin_token)
-        if record is None:
-            raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+        record = _find_by_admin_token(self._repository, admin_token, now)
         ballots = self._repository.list_ballots(record.session_id)
         return AdminSessionView(
             title=record.title,
@@ -356,24 +383,12 @@ class GetVotingResults:
 
     def execute(self, admin_token: str) -> VotingResults:
         now = _now()
-        self._repository.purge_expired(now)
-        record = self._repository.find_by_admin_token(admin_token)
-        if record is None:
-            raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+        record = _find_by_admin_token(self._repository, admin_token, now)
         if not _is_closed(record, now):
             raise VotingNotClosedError("結果は締切後に確認できます")
         ballots = self._repository.list_ballots(record.session_id)
-        primary, comparison, report = _tally(record, ballots)
-        return VotingResults(
-            title=record.title,
-            options=list(record.options),
-            option_descriptions=list(record.option_descriptions),
-            method=record.method,
-            ballot_count=len(ballots),
-            primary=primary,
-            comparison=comparison,
-            report=report,
-            voters=[b.voter_name for b in ballots],
+        return VotingResults.from_public(
+            _build_public_results(record, ballots), voters=[b.voter_name for b in ballots]
         )
 
 
@@ -390,22 +405,11 @@ class GetPublicVotingResults:
 
     def execute(self, participant_token: str) -> PublicVotingResults:
         now = _now()
-        self._repository.purge_expired(now)
-        record = self._repository.find_by_participant_token(participant_token)
-        if record is None or not record.publish_results or not _is_closed(record, now):
+        record = _find_by_participant_token(self._repository, participant_token, now)
+        if not record.publish_results or not _is_closed(record, now):
             raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
         ballots = self._repository.list_ballots(record.session_id)
-        primary, comparison, report = _tally(record, ballots)
-        return PublicVotingResults(
-            title=record.title,
-            options=list(record.options),
-            option_descriptions=list(record.option_descriptions),
-            method=record.method,
-            ballot_count=len(ballots),
-            primary=primary,
-            comparison=comparison,
-            report=report,
-        )
+        return _build_public_results(record, ballots)
 
 
 class DeleteVotingSession:
@@ -416,10 +420,7 @@ class DeleteVotingSession:
 
     def execute(self, admin_token: str) -> None:
         now = _now()
-        self._repository.purge_expired(now)
-        record = self._repository.find_by_admin_token(admin_token)
-        if record is None:
-            raise VotingSessionNotFoundError(_NOT_FOUND_MESSAGE)
+        record = _find_by_admin_token(self._repository, admin_token, now)
         self._repository.delete_session(record.session_id)
 
 

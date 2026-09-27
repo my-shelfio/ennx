@@ -30,7 +30,7 @@ class ConstraintEntry:
 class MatchingRequest:
     """マッチング実行・検証の入力（RunMatching / ValidateInput 共通）。
 
-    現行 Flask 実装のセッション最小入力に相当する全量を 1 リクエストで受け取る。
+    設定と選好の全量を 1 リクエストで受け取る。
     利用者はアルゴリズムではなく「制約種別」を選ぶ。
 
     Attributes:

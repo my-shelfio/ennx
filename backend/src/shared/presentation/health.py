@@ -1,7 +1,6 @@
 """ヘルスチェックエンドポイント。
 
 Render のヘルスチェック（render.yaml: healthCheckPath = /healthz）から利用する。
-現行 Flask 実装（src/app）と同じパス・応答形式を維持し、切り替えを容易にする。
 """
 
 from fastapi import APIRouter

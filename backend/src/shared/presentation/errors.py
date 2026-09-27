@@ -1,9 +1,8 @@
 """RFC 9457（Problem Details for HTTP APIs）形式のエラーレスポンスの共通部品。
 
 `ProblemDetail`・`build_problem_response` は各 feature のエラーハンドラ
-（features/matching/presentation/errors.py、features/voting/presentation/errors.py）
-が共通で使う。Pydantic の RequestValidationError（型・上限検証）はどの feature にも
-属さないため、本モジュールでハンドラ登録まで行う。
+（features/*/presentation/errors.py）が共通で使う。Pydantic の RequestValidationError
+（型・上限検証）はどの feature にも属さないため、本モジュールでハンドラ登録まで行う。
 """
 
 from __future__ import annotations

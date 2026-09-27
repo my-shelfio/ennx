@@ -182,15 +182,7 @@ class AssignmentRunResponse(BaseModel):
             lottery_complete=dto.lottery_complete,
             drawn_assignment=dto.drawn_assignment,
             seed=dto.seed,
-            report=[
-                ReportItemSchema(
-                    label=item.label,
-                    status=item.status,
-                    detail=item.detail,
-                    blocking_pairs=[list(pair) for pair in item.blocking_pairs],
-                )
-                for item in dto.report
-            ],
+            report=[ReportItemSchema.from_domain(item) for item in dto.report],
             events=[
                 AssignmentEventSchema(
                     step=event.step,
@@ -219,7 +211,7 @@ class AssignmentValidateResponse(BaseModel):
         """application 層の出力 DTO から組み立てる。"""
         return cls(
             valid=dto.valid,
-            errors=[FieldErrorSchema(field=e.field, message=e.message) for e in dto.errors],
+            errors=[FieldErrorSchema.from_domain(e) for e in dto.errors],
         )
 
 

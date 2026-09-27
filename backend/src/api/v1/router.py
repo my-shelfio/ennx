@@ -14,8 +14,10 @@ from fastapi import APIRouter
 from features.assignment.presentation.router import router as assignment_router
 from features.matching.presentation.router import router as matching_router
 from features.voting.presentation.router import router as voting_router
+from shared.presentation.analytics import router as analytics_router
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(matching_router)
 router.include_router(assignment_router)
 router.include_router(voting_router)
+router.include_router(analytics_router)

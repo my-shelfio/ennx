@@ -1,8 +1,6 @@
 """マッチング入力の組み立てと性質レポート生成。
 
-現 Flask 実装の src/app/matching/service.py から、表示（MatchingView / 過程図）を
-除いたコア部分（入力モデルの組み立て・制約種別ディスパッチ・性質レポート）を
-application 層へ再配置したもの。
+入力モデルの組み立て・制約種別ディスパッチ・性質レポートを担う。
 
 RunMatching / ValidateInput の両ユースケースが共用する。検証は次の二段構え:
     1. 構造検証（本モジュール）: 制約種別の有効性・必須フィールドの有無を
@@ -25,7 +23,14 @@ from features.matching.domain import checks
 from features.matching.domain.ca import all_constraints, capacity_constraint, cutoff_adjustment
 from features.matching.domain.da import deferred_acceptance
 from features.matching.domain.fda import flexible_deferred_acceptance
-from features.matching.domain.models import CAInput, Constraint, DAInput, FDAInput, MatchingResult
+from features.matching.domain.models import (
+    BaseMatchingInput,
+    CAInput,
+    Constraint,
+    DAInput,
+    FDAInput,
+    MatchingResult,
+)
 from shared.application.errors import FieldError
 from shared.domain.report import ReportItem
 
@@ -38,6 +43,16 @@ def resolve_names(request: MatchingRequest) -> tuple[list[str], list[str]]:
     emp_names = request.employee_names or [f"社員{i + 1}" for i in range(request.num_employees)]
     dep_names = request.department_names or [f"部署{j + 1}" for j in range(request.num_departments)]
     return emp_names, dep_names
+
+
+def display_names(data: BaseMatchingInput) -> tuple[list[str], list[str]]:
+    """組み立て済みの入力モデルから社員・部署の表示名を取り出す。
+
+    `build_domain_input` が必ず表示名を設定するため、名前の再計算は不要。
+    """
+    assert data.proposer_names is not None
+    assert data.receiver_names is not None
+    return data.proposer_names, data.receiver_names
 
 
 def validate_structure(request: MatchingRequest) -> list[FieldError]:
@@ -170,31 +185,26 @@ def _status_item(label: str, check: checks.CheckResult, ok_detail: str) -> Repor
 
 
 def build_report(
-    algorithm: str, request: MatchingRequest, result: MatchingResult
+    request: MatchingRequest,
+    matching_input: DAInput | FDAInput | CAInput,
+    result: MatchingResult,
 ) -> list[ReportItem]:
-    """アルゴリズムに応じた性質レポートを組み立てる。"""
-    emp_names, dep_names = resolve_names(request)
-    pp = request.proposer_prefs
-    rp = request.receiver_prefs
+    """入力モデルの種別に応じた性質レポートを組み立てる。
+
+    `request` は CA の追加制約（制約種別ごとのレポート項目）にのみ使う。
+    """
+    emp_names, dep_names = display_names(matching_input)
+    pp = matching_input.proposer_prefs
+    rp = matching_input.receiver_prefs
     pm = result.proposer_match
     rm = result.receiver_match
-    capacities = request.capacities
     items: list[ReportItem] = []
 
-    if algorithm == "da":
-        stability = checks.check_stability(pp, rp, pm, rm, capacities, emp_names, dep_names)
-        items.append(
-            _status_item("安定性", stability, "安定なマッチングです（ブロッキングペアは 0 件）。")
-        )
-        cap = checks.check_capacity_compliance(rm, capacities, dep_names)
-        items.append(_status_item("定員遵守", cap, "すべての部署が定員以内です。"))
-    elif algorithm == "fda":
-        assert request.max_caps is not None
-        assert request.regions is not None
-        assert request.regional_caps is not None
-        max_caps = request.max_caps
-        regions = request.regions
-        regional_caps = request.regional_caps
+    # FDAInput は DAInput の派生なので、FDA を先に判定する。
+    if isinstance(matching_input, FDAInput):
+        max_caps = matching_input.max_caps
+        regions = matching_input.regions
+        regional_caps = matching_input.regional_caps
         weak = checks.check_weak_stability(pp, rp, pm, rm, max_caps, emp_names, dep_names)
         items.append(_status_item("弱安定性", weak, "弱安定なマッチングです。"))
         cap = checks.check_capacity_compliance(rm, max_caps, dep_names)
@@ -224,8 +234,8 @@ def build_report(
                     detail=f"各地域が上限以内です（{detail}）。",
                 )
             )
-    elif algorithm == "ca":
-        constraints = build_ca_constraints(request)
+    elif isinstance(matching_input, CAInput):
+        constraints = matching_input.constraints
         ng = [
             dep_names[j] for j, matched in enumerate(rm) if not constraints[j](frozenset(matched))
         ]
@@ -246,5 +256,14 @@ def build_report(
             items.append(spec.build_report_item(entry.params, rm, emp_names, dep_names))
         fairness = checks.check_fairness(pp, rp, pm, rm, emp_names, dep_names)
         items.append(_status_item("公平性", fairness, "公平なマッチングです（正当な羨望なし）。"))
+    else:
+        stability = checks.check_stability(
+            pp, rp, pm, rm, matching_input.capacities, emp_names, dep_names
+        )
+        items.append(
+            _status_item("安定性", stability, "安定なマッチングです（ブロッキングペアは 0 件）。")
+        )
+        cap = checks.check_capacity_compliance(rm, matching_input.capacities, dep_names)
+        items.append(_status_item("定員遵守", cap, "すべての部署が定員以内です。"))
 
     return items
