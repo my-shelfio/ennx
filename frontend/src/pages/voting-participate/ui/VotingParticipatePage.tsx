@@ -131,7 +131,15 @@ export function VotingParticipatePage() {
           </p>
         ) : null}
         {publicResultsQuery.data !== undefined ? (
-          <VotingResultsPanel results={publicResultsQuery.data} />
+          publicResultsQuery.data.ballot_count === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>投票はありませんでした</CardTitle>
+              </CardHeader>
+            </Card>
+          ) : (
+            <VotingResultsPanel results={publicResultsQuery.data} />
+          )
         ) : null}
       </div>
     );
