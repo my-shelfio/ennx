@@ -3,8 +3,6 @@ export {
   AnimatePresence,
   AppMotionConfig,
   motion,
-  Reorder,
-  useDragControls,
   useReducedMotion,
 } from "./motion";
 export { escapeCsvField, parseCsv, stripBom, toCsvRow, UTF8_BOM } from "./csv";

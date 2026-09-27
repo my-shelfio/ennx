@@ -128,24 +128,6 @@ export function isMatrixValid(matrix: RankMatrix): boolean {
 }
 
 /**
- * 行列の1セルを更新した新しい行列を返す（イミュータブル）。
- * value が null の場合はセルをクリアする。
- */
-export function updateCell(
-  matrix: RankMatrix,
-  rowIndex: number,
-  columnIndex: number,
-  value: RankCell,
-): RankMatrix {
-  return matrix.map((row, r) => {
-    if (r !== rowIndex) {
-      return row;
-    }
-    return row.map((cell, c) => (c === columnIndex ? value : cell));
-  });
-}
-
-/**
  * 行（1人・1部署分の選好）のうち入力済みのセルのみを、順位の昇順（好みの高い順）で
  * 列インデックスの配列に変換する。同順位はタイブレークとして列の並び順を使う
  * （prefsFromMatrix と同じ規則）。未入力セルは含めない点が rowFromOrderedColumns の

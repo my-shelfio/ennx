@@ -40,12 +40,6 @@ export const CONSTRAINT_TYPE_OPTIONS: readonly ConstraintTypeOption[] = [
   },
 ] as const;
 
-export function findConstraintTypeOption(
-  key: string,
-): ConstraintTypeOption | undefined {
-  return CONSTRAINT_TYPE_OPTIONS.find((option) => option.key === key);
-}
-
 /** 文字列が既知の制約種別キーかどうかを判定する型ガード（ストア復元時の型絞り込み用）。 */
 export function isConstraintTypeKey(value: string): value is ConstraintTypeKey {
   return CONSTRAINT_TYPE_OPTIONS.some((option) => option.key === value);

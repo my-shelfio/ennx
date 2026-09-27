@@ -1,7 +1,8 @@
 import { useState } from "react";
 
-import type { MatchingResult } from "../../../entities/matching";
+import type { EmployeeAssignmentRow, MatchingResult } from "../../../entities/matching";
 import {
+  buildEmployeeAssignmentRows,
   compareByDistanceFromPreference,
   DEFAULT_FOLLOW_UP_THRESHOLD,
   isFollowUpTarget,
@@ -17,8 +18,6 @@ import {
   TableHeader,
   TableRow,
 } from "../../../shared/ui";
-import { buildEmployeeAssignmentRows } from "../lib/assignment";
-import type { EmployeeAssignmentRow } from "../lib/assignment";
 
 export interface DetailTableProps {
   result: MatchingResult;
