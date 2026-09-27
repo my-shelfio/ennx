@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 
 import {
   buildDeadlineIso,
+  buildOptionDescriptions,
   validateVotingCreateForm,
   VOTING_METHOD_INFO,
   VOTING_METHODS,
@@ -32,6 +33,7 @@ const DEADLINE_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 const INITIAL_VALUES: VotingCreateFormValues = {
   title: "",
   options: ["", ""],
+  optionDescriptions: ["", ""],
   method: "",
   deadlineDays: 7,
 };
@@ -65,6 +67,7 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
       {
         title: values.title.trim(),
         options: trimmedOptions,
+        option_descriptions: buildOptionDescriptions(values.optionDescriptions),
         method: values.method as VotingMethod,
         deadline: buildDeadlineIso(values.deadlineDays),
       },
@@ -115,8 +118,12 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
 
           <OptionListField
             options={values.options}
-            onChange={(options) => setValues((prev) => ({ ...prev, options }))}
+            descriptions={values.optionDescriptions}
+            onChange={({ options, descriptions }) =>
+              setValues((prev) => ({ ...prev, options, optionDescriptions: descriptions }))
+            }
             error={errors.options}
+            descriptionError={errors.optionDescriptions}
           />
 
           <fieldset>

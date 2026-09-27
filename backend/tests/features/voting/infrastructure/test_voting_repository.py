@@ -6,6 +6,7 @@ SQLite（テスト）で同一のテーブル定義を共有できる。
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -14,6 +15,7 @@ from sqlalchemy.engine import Engine
 
 from features.voting.application.ports import BallotRecord, VotingSessionRecord
 from features.voting.infrastructure import SqlVotingRepository, init_voting_schema
+from features.voting.infrastructure.db import voting_sessions
 
 
 @pytest.fixture()
@@ -31,6 +33,7 @@ def _record(session_id: str = "s1", *, expires_in_hours: int = 24) -> VotingSess
         admin_token=f"a-{session_id}",
         title="テスト投票",
         options=["案A", "案B"],
+        option_descriptions=["", ""],
         method="ranking",
         deadline=now + timedelta(hours=expires_in_hours),
         expires_at=now + timedelta(hours=expires_in_hours),
@@ -93,3 +96,33 @@ def test_delete_session(engine: Engine) -> None:
     repository.delete_session("s1")
     assert repository.find_by_participant_token("p-s1") is None
     assert repository.list_ballots("s1") == []
+
+
+def test_option_descriptions_round_trip(engine: Engine) -> None:
+    repository = SqlVotingRepository(engine)
+    record = _record()
+    repository.create_session(replace(record, option_descriptions=["費用は高め", ""]))
+    found = repository.find_by_participant_token("p-s1")
+    assert found is not None and found.option_descriptions == ["費用は高め", ""]
+
+
+def test_row_without_option_descriptions_reads_as_empty(engine: Engine) -> None:
+    """補足説明の列を追加する前に作成された行（NULL）は「説明なし」として読める。"""
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+    with engine.begin() as conn:
+        conn.execute(
+            sa.insert(voting_sessions).values(
+                session_id="legacy",
+                participant_token="p-legacy",
+                admin_token="a-legacy",
+                title="既存の投票",
+                options=["案A", "案B", "案C"],
+                method="plurality",
+                deadline=now,
+                expires_at=now,
+                created_at=now,
+                closed_at=None,
+            )
+        )
+    found = SqlVotingRepository(engine).find_by_participant_token("p-legacy")
+    assert found is not None and found.option_descriptions == ["", "", ""]

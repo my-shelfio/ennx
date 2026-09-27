@@ -29,6 +29,7 @@ from shared.domain.report import ReportItem
 
 from .dto import (
     MAX_LIFETIME_DAYS,
+    MAX_OPTION_DESCRIPTION_LENGTH,
     MAX_OPTION_LENGTH,
     MAX_TITLE_LENGTH,
     MAX_VOTER_NAME_LENGTH,
@@ -74,12 +75,18 @@ class CreateVotingSession:
 
         expires_at = now + timedelta(days=MAX_LIFETIME_DAYS)
         deadline = request.deadline if request.deadline is not None else expires_at
+        option_descriptions = (
+            [description.strip() for description in request.option_descriptions]
+            if request.option_descriptions is not None
+            else [""] * len(request.options)
+        )
         record = VotingSessionRecord(
             session_id=str(uuid.uuid4()),
             participant_token=secrets.token_urlsafe(24),
             admin_token=secrets.token_urlsafe(24),
             title=request.title.strip(),
             options=[option.strip() for option in request.options],
+            option_descriptions=option_descriptions,
             method=request.method,
             deadline=deadline,
             expires_at=expires_at,
@@ -125,6 +132,26 @@ class CreateVotingSession:
             )
         if len(set(options)) != len(options):
             errors.append(FieldError(field="options", message="選択肢が重複しています"))
+        if request.option_descriptions is not None:
+            if len(request.option_descriptions) != len(options):
+                errors.append(
+                    FieldError(
+                        field="option_descriptions",
+                        message="補足説明は選択肢と同じ件数で指定してください",
+                    )
+                )
+            if any(
+                len(description.strip()) > MAX_OPTION_DESCRIPTION_LENGTH
+                for description in request.option_descriptions
+            ):
+                errors.append(
+                    FieldError(
+                        field="option_descriptions",
+                        message=(
+                            f"補足説明は {MAX_OPTION_DESCRIPTION_LENGTH} 文字以内にしてください"
+                        ),
+                    )
+                )
         if request.method not in VOTING_METHODS:
             errors.append(
                 FieldError(
@@ -162,6 +189,7 @@ class GetParticipantSession:
         return ParticipantSessionView(
             title=record.title,
             options=list(record.options),
+            option_descriptions=list(record.option_descriptions),
             method=record.method,
             deadline=record.deadline,
             is_closed=_is_closed(record, now),
@@ -263,6 +291,7 @@ class GetAdminSession:
         return AdminSessionView(
             title=record.title,
             options=list(record.options),
+            option_descriptions=list(record.option_descriptions),
             method=record.method,
             deadline=record.deadline,
             expires_at=record.expires_at,
@@ -292,6 +321,7 @@ class GetVotingResults:
         return VotingResults(
             title=record.title,
             options=list(record.options),
+            option_descriptions=list(record.option_descriptions),
             method=record.method,
             ballot_count=len(ballots),
             primary=primary,

@@ -6,8 +6,10 @@
 - スキーマ管理はマイグレーションツールを使わず `init_voting_schema`
   （CREATE TABLE IF NOT EXISTS 相当）で行う（テーブル数が増えたら再検討する）。
   既存テーブルへの列追加・主キー変更は `create_all` では反映されないため、
-  主キー構成を変えるスキーマ変更時は本番 Neon DB に対して手動で `ALTER TABLE`
-  するか、保存期間が最長7日と短いことを踏まえてテーブルを作り直す。
+  列追加・主キー構成を変えるスキーマ変更時は、変更を含むコードのデプロイ前に
+  本番・開発の Neon DB に対して手動で `ALTER TABLE` するか、保存期間が最長7日と
+  短いことを踏まえてテーブルを作り直す。追加する列は NULL 許容（または既定値
+  つき）とし、列追加前に作成された行も読めるようにする。
 - 型はポータブルなもののみ使う（JSON / String / DateTime）。テストでは同じ
   スキーマを SQLite in-memory に作成できる。
 """
@@ -31,6 +33,9 @@ voting_sessions = sa.Table(
     sa.Column("admin_token", sa.String(64), nullable=False, unique=True, index=True),
     sa.Column("title", sa.String(200), nullable=False),
     sa.Column("options", sa.JSON(), nullable=False),
+    # 選択肢ごとの補足説明（文字列配列。options と同数）。列追加前に作成された
+    # 行は NULL で、読み出し時に「すべて説明なし」として扱う。
+    sa.Column("option_descriptions", sa.JSON(), nullable=True),
     sa.Column("method", sa.String(20), nullable=False),
     # 日時は UTC の ISO-8601 文字列（固定書式）で保存する。固定書式同士の
     # 文字列比較は時系列順と一致するため、期限判定を SQL の比較で行える

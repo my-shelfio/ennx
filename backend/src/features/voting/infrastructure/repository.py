@@ -24,12 +24,19 @@ def _from_text(value: str) -> datetime:
 def _record_from_row(row: Row[tuple[object, ...]]) -> VotingSessionRecord:
     mapping = row._mapping
     closed_at = mapping["closed_at"]
+    options = [str(v) for v in mapping["options"]]
+    raw_descriptions = mapping["option_descriptions"]
+    # 列追加前に作成された行（NULL）や件数の食い違いは「説明なし」で補う。
+    descriptions = [str(v) for v in raw_descriptions] if isinstance(raw_descriptions, list) else []
+    if len(descriptions) != len(options):
+        descriptions = [""] * len(options)
     return VotingSessionRecord(
         session_id=str(mapping["session_id"]),
         participant_token=str(mapping["participant_token"]),
         admin_token=str(mapping["admin_token"]),
         title=str(mapping["title"]),
-        options=[str(v) for v in mapping["options"]],
+        options=options,
+        option_descriptions=descriptions,
         method=str(mapping["method"]),
         deadline=_from_text(str(mapping["deadline"])),
         expires_at=_from_text(str(mapping["expires_at"])),
@@ -70,6 +77,7 @@ class SqlVotingRepository:
                     admin_token=record.admin_token,
                     title=record.title,
                     options=record.options,
+                    option_descriptions=record.option_descriptions,
                     method=record.method,
                     deadline=_to_text(record.deadline),
                     expires_at=_to_text(record.expires_at),

@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildBallotRequestBody,
   buildDeadlineIso,
+  buildOptionDescriptions,
   isBallotComplete,
   MAX_DEADLINE_DAYS,
+  MAX_OPTION_DESCRIPTION_LENGTH,
   MAX_OPTION_LENGTH,
   MAX_OPTIONS,
   MAX_TITLE_LENGTH,
@@ -14,7 +16,13 @@ import {
 } from "./validation";
 
 describe("validateVotingCreateForm", () => {
-  const base = { title: "次期プロジェクト名", options: ["案A", "案B"], method: "plurality" as const, deadlineDays: 7 };
+  const base = {
+    title: "次期プロジェクト名",
+    options: ["案A", "案B"],
+    optionDescriptions: ["", ""],
+    method: "plurality" as const,
+    deadlineDays: 7,
+  };
 
   it("有効な入力ではエラーを返さない", () => {
     expect(validateVotingCreateForm(base)).toEqual({});
@@ -69,6 +77,27 @@ describe("validateVotingCreateForm", () => {
     expect(
       validateVotingCreateForm({ ...base, deadlineDays: MAX_DEADLINE_DAYS + 1 }).deadlineDays,
     ).toBeDefined();
+  });
+
+  it(`補足説明は${MAX_OPTION_DESCRIPTION_LENGTH}文字までなら通る`, () => {
+    const errors = validateVotingCreateForm({
+      ...base,
+      optionDescriptions: ["あ".repeat(MAX_OPTION_DESCRIPTION_LENGTH), ""],
+    });
+    expect(errors).toEqual({});
+  });
+
+  it(`補足説明が${MAX_OPTION_DESCRIPTION_LENGTH}文字を超えると optionDescriptions エラー`, () => {
+    const errors = validateVotingCreateForm({
+      ...base,
+      optionDescriptions: ["", "あ".repeat(MAX_OPTION_DESCRIPTION_LENGTH + 1)],
+    });
+    expect(errors.optionDescriptions).toBeDefined();
+  });
+
+  it("補足説明と選択肢の件数が食い違うと optionDescriptions エラー", () => {
+    const errors = validateVotingCreateForm({ ...base, optionDescriptions: [""] });
+    expect(errors.optionDescriptions).toBeDefined();
   });
 });
 
@@ -168,5 +197,15 @@ describe("isBallotComplete", () => {
         approvals: [],
       }),
     ).toBe(false);
+  });
+});
+
+describe("buildOptionDescriptions", () => {
+  it("すべて空（空白のみを含む）なら null を返す", () => {
+    expect(buildOptionDescriptions(["", "  "])).toBeNull();
+  });
+
+  it("1件でも説明があれば前後空白を除去した全件を返す", () => {
+    expect(buildOptionDescriptions([" 費用は高め ", ""])).toEqual(["費用は高め", ""]);
   });
 });

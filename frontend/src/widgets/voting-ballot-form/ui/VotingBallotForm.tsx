@@ -11,6 +11,8 @@ import { Button } from "../../../shared/ui";
 
 export interface VotingBallotFormProps {
   options: string[];
+  /** 選択肢ごとの補足説明（options と同じ長さ。説明なしは空文字）。 */
+  optionDescriptions?: string[];
   method: VotingMethod;
   onSubmit: (body: BallotRequestBody) => void;
   isSubmitting: boolean;
@@ -39,6 +41,20 @@ function shuffledIndices(length: number): number[] {
   return indices;
 }
 
+/** 案名と、あれば補足説明を案名の下に小さく表示する。 */
+function OptionText({ label, description }: { label: string; description: string }) {
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="text-sm text-slate-900">{label}</span>
+      {description.length > 0 ? (
+        <span className="whitespace-pre-line break-words text-xs text-slate-500">
+          {description}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 /**
  * 投票フォーム。
  * 投票方式に応じて入力形式を切り替える(多数決=単一選択・承認投票=複数選択・
@@ -47,6 +63,7 @@ function shuffledIndices(length: number): number[] {
  */
 export function VotingBallotForm({
   options,
+  optionDescriptions = [],
   method,
   onSubmit,
   isSubmitting,
@@ -129,7 +146,7 @@ export function VotingBallotForm({
               <label
                 key={index}
                 className={cn(
-                  "flex cursor-pointer items-center gap-3 rounded-control border p-3",
+                  "flex cursor-pointer items-start gap-3 rounded-control border p-3",
                   choice === index ? "border-primary-400 bg-primary-50" : "border-slate-200",
                 )}
               >
@@ -138,8 +155,9 @@ export function VotingBallotForm({
                   name="ballot-choice"
                   checked={choice === index}
                   onChange={() => setChoice(index)}
+                  className="mt-1"
                 />
-                <span className="text-sm text-slate-900">{option}</span>
+                <OptionText label={option} description={optionDescriptions[index] ?? ""} />
               </label>
             ))}
           </div>
@@ -156,7 +174,7 @@ export function VotingBallotForm({
               <label
                 key={index}
                 className={cn(
-                  "flex cursor-pointer items-center gap-3 rounded-control border p-3",
+                  "flex cursor-pointer items-start gap-3 rounded-control border p-3",
                   approvals.includes(index)
                     ? "border-primary-400 bg-primary-50"
                     : "border-slate-200",
@@ -166,8 +184,9 @@ export function VotingBallotForm({
                   type="checkbox"
                   checked={approvals.includes(index)}
                   onChange={() => toggleApproval(index)}
+                  className="mt-1"
                 />
-                <span className="text-sm text-slate-900">{option}</span>
+                <OptionText label={option} description={optionDescriptions[index] ?? ""} />
               </label>
             ))}
           </div>
@@ -185,9 +204,10 @@ export function VotingBallotForm({
                 key={optionIndex}
                 className="flex items-center justify-between gap-3 rounded-control border border-slate-200 p-3"
               >
-                <span className="text-sm text-slate-900">
-                  {position + 1}. {options[optionIndex]}
-                </span>
+                <OptionText
+                  label={`${position + 1}. ${options[optionIndex] ?? ""}`}
+                  description={optionDescriptions[optionIndex] ?? ""}
+                />
                 <div className="flex gap-1">
                   <Button
                     type="button"

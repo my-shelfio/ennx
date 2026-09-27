@@ -13,6 +13,8 @@ export const MIN_OPTIONS = 2;
 export const MAX_OPTIONS = 10;
 export const MAX_TITLE_LENGTH = 100;
 export const MAX_OPTION_LENGTH = 50;
+// backend の MAX_OPTION_DESCRIPTION_LENGTH（application/voting/dto.py）と一致させる。
+export const MAX_OPTION_DESCRIPTION_LENGTH = 200;
 export const MIN_DEADLINE_DAYS = 1;
 export const MAX_DEADLINE_DAYS = 7;
 // backend の MAX_VOTER_NAME_LENGTH（application/voting/dto.py）と一致させる。
@@ -23,6 +25,8 @@ export const VOTING_METHODS: readonly VotingMethod[] = ["plurality", "approval",
 export interface VotingCreateFormValues {
   title: string;
   options: string[];
+  /** 選択肢ごとの補足説明（任意）。options と同じ長さで、説明なしは空文字。 */
+  optionDescriptions: string[];
   method: VotingMethod | "";
   deadlineDays: number;
 }
@@ -30,6 +34,7 @@ export interface VotingCreateFormValues {
 export interface VotingCreateFormErrors {
   title?: string;
   options?: string;
+  optionDescriptions?: string;
   method?: string;
   deadlineDays?: string;
 }
@@ -63,6 +68,16 @@ export function validateVotingCreateForm(values: VotingCreateFormValues): Voting
     errors.options = "選択肢が重複しています";
   }
 
+  if (values.optionDescriptions.length !== values.options.length) {
+    errors.optionDescriptions = "補足説明と選択肢の件数が一致しません。入力し直してください";
+  } else if (
+    values.optionDescriptions.some(
+      (description) => description.trim().length > MAX_OPTION_DESCRIPTION_LENGTH,
+    )
+  ) {
+    errors.optionDescriptions = `補足説明は${MAX_OPTION_DESCRIPTION_LENGTH}文字以内で入力してください`;
+  }
+
   if (values.method === "") {
     errors.method = "投票方式を選択してください";
   }
@@ -76,6 +91,15 @@ export function validateVotingCreateForm(values: VotingCreateFormValues): Voting
   }
 
   return errors;
+}
+
+/**
+ * フォーム入力から投票作成リクエスト用の補足説明（前後空白を除去）を組み立てる。
+ * すべて空なら null を返し、リクエストでは省略する（説明なしとして扱われる）。
+ */
+export function buildOptionDescriptions(optionDescriptions: string[]): string[] | null {
+  const trimmed = optionDescriptions.map((description) => description.trim());
+  return trimmed.some((description) => description.length > 0) ? trimmed : null;
 }
 
 /** フォーム入力から投票作成リクエスト用の deadline（ISO 8601 UTC）を組み立てる。 */

@@ -15,16 +15,23 @@ VOTING_METHODS = ("plurality", "approval", "ranking")
 # 各種入力値の文字数上限。
 MAX_TITLE_LENGTH = 100
 MAX_OPTION_LENGTH = 50
+# 選択肢ごとの補足説明（任意）の文字数上限。
+MAX_OPTION_DESCRIPTION_LENGTH = 200
 MAX_VOTER_NAME_LENGTH = 50  # 選択肢の文字数上限（MAX_OPTION_LENGTH）と揃える
 MAX_LIFETIME_DAYS = 7
 
 
 @dataclass(frozen=True, kw_only=True)
 class CreateVotingSessionRequest:
-    """投票セッション作成の入力。deadline 省略時は有効期限（7 日後）を締切とする。"""
+    """投票セッション作成の入力。deadline 省略時は有効期限（7 日後）を締切とする。
+
+    option_descriptions は選択肢ごとの補足説明（任意）。指定する場合は options と
+    同数とし、説明のない選択肢は空文字にする。省略時はすべて説明なしとして扱う。
+    """
 
     title: str
     options: list[str]
+    option_descriptions: list[str] | None
     method: str
     deadline: datetime | None
 
@@ -45,6 +52,8 @@ class ParticipantSessionView:
 
     title: str
     options: list[str]
+    # 選択肢ごとの補足説明（options と同数。説明なしは空文字）。
+    option_descriptions: list[str]
     method: str
     deadline: datetime
     is_closed: bool
@@ -56,6 +65,8 @@ class AdminSessionView:
 
     title: str
     options: list[str]
+    # 選択肢ごとの補足説明（options と同数。説明なしは空文字）。
+    option_descriptions: list[str]
     method: str
     deadline: datetime
     expires_at: datetime
@@ -88,6 +99,8 @@ class VotingResults:
 
     title: str
     options: list[str]
+    # 選択肢ごとの補足説明（options と同数。説明なしは空文字）。
+    option_descriptions: list[str]
     method: str
     ballot_count: int
     primary: RuleResult

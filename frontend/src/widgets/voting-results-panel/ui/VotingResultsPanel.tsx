@@ -105,7 +105,14 @@ export function VotingResultsPanel({ results }: VotingResultsPanelProps) {
               <TableBody>
                 {results.options.map((option, index) => (
                   <TableRow key={option}>
-                    <TableCell>{option}</TableCell>
+                    <TableCell>
+                      <span className="block">{option}</span>
+                      {(results.option_descriptions[index] ?? "").length > 0 ? (
+                        <span className="block max-w-xs whitespace-pre-line break-words text-xs text-slate-500">
+                          {results.option_descriptions[index]}
+                        </span>
+                      ) : null}
+                    </TableCell>
                     {results.comparison.map((rule) => (
                       <TableCell key={rule.rule}>
                         {rule.scores[index] ?? "―"}

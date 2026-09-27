@@ -132,6 +132,7 @@ export function VotingParticipatePage() {
         <CardContent className="pt-6">
           <VotingBallotForm
             options={session.options}
+            optionDescriptions={session.option_descriptions}
             method={session.method as "plurality" | "approval" | "ranking"}
             onSubmit={handleSubmit}
             isSubmitting={castBallotMutation.isPending}

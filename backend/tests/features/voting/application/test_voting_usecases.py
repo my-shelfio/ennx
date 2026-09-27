@@ -64,6 +64,7 @@ class FakeVotingRepository:
             admin_token=record.admin_token,
             title=record.title,
             options=record.options,
+            option_descriptions=record.option_descriptions,
             method=record.method,
             deadline=record.deadline,
             expires_at=record.expires_at,
@@ -86,6 +87,7 @@ def _create(repository: FakeVotingRepository, method: str = "ranking") -> tuple[
         CreateVotingSessionRequest(
             title="次期プロジェクト名の選定",
             options=["案A", "案B", "案C"],
+            option_descriptions=None,
             method=method,
             deadline=None,
         )
@@ -109,7 +111,11 @@ class TestCreateVotingSession:
         with pytest.raises(InvalidVotingInputError) as exc_info:
             CreateVotingSession(repository).execute(
                 CreateVotingSessionRequest(
-                    title="", options=["案A"], method="unknown", deadline=None
+                    title="",
+                    options=["案A"],
+                    option_descriptions=None,
+                    method="unknown",
+                    deadline=None,
                 )
             )
         fields = {e.field for e in exc_info.value.errors}
@@ -121,6 +127,7 @@ class TestCreateVotingSession:
                 CreateVotingSessionRequest(
                     title="t",
                     options=["a", "b"],
+                    option_descriptions=None,
                     method="ranking",
                     deadline=datetime.now(UTC) + timedelta(days=8),
                 )
@@ -289,6 +296,7 @@ class TestDeleteAndCleanup:
             admin_token=record.admin_token,
             title=record.title,
             options=record.options,
+            option_descriptions=record.option_descriptions,
             method=record.method,
             deadline=record.deadline,
             expires_at=datetime.now(UTC) - timedelta(hours=1),

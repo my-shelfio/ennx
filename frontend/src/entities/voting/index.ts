@@ -15,8 +15,10 @@ export type { VotingNicknameStore } from "./model/store";
 export {
   buildBallotRequestBody,
   buildDeadlineIso,
+  buildOptionDescriptions,
   isBallotComplete,
   MAX_DEADLINE_DAYS,
+  MAX_OPTION_DESCRIPTION_LENGTH,
   MAX_OPTION_LENGTH,
   MAX_OPTIONS,
   MAX_TITLE_LENGTH,

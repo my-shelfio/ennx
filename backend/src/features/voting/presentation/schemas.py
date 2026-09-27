@@ -28,6 +28,14 @@ class VotingSessionCreateSchema(BaseModel):
 
     title: str = Field(description="投票のタイトル", max_length=200)
     options: list[str] = Field(description="選択肢（2〜10 件）", min_length=1, max_length=20)
+    option_descriptions: list[str] | None = Field(
+        default=None,
+        description=(
+            "選択肢ごとの補足説明（任意・各 200 文字以内）。指定する場合は options と同数とし、"
+            "説明のない選択肢は空文字にする"
+        ),
+        max_length=20,
+    )
     method: str = Field(description="投票方式（plurality / approval / ranking）")
     deadline: datetime | None = Field(default=None, description="締切（省略時は作成から 7 日後）")
 
@@ -36,6 +44,9 @@ class VotingSessionCreateSchema(BaseModel):
         return CreateVotingSessionRequest(
             title=self.title,
             options=list(self.options),
+            option_descriptions=(
+                list(self.option_descriptions) if self.option_descriptions is not None else None
+            ),
             method=self.method,
             deadline=self.deadline,
         )
@@ -65,6 +76,9 @@ class ParticipantSessionSchema(BaseModel):
 
     title: str
     options: list[str]
+    option_descriptions: list[str] = Field(
+        description="選択肢ごとの補足説明（options と同数。説明なしは空文字）"
+    )
     method: str
     deadline: datetime
     is_closed: bool = Field(description="締切済み（投票不可）かどうか")
@@ -75,6 +89,7 @@ class ParticipantSessionSchema(BaseModel):
         return cls(
             title=dto.title,
             options=dto.options,
+            option_descriptions=list(dto.option_descriptions),
             method=dto.method,
             deadline=dto.deadline,
             is_closed=dto.is_closed,
@@ -86,6 +101,9 @@ class AdminSessionSchema(BaseModel):
 
     title: str
     options: list[str]
+    option_descriptions: list[str] = Field(
+        description="選択肢ごとの補足説明（options と同数。説明なしは空文字）"
+    )
     method: str
     deadline: datetime
     expires_at: datetime
@@ -100,6 +118,7 @@ class AdminSessionSchema(BaseModel):
         return cls(
             title=dto.title,
             options=dto.options,
+            option_descriptions=list(dto.option_descriptions),
             method=dto.method,
             deadline=dto.deadline,
             expires_at=dto.expires_at,
@@ -166,6 +185,9 @@ class VotingResultsSchema(BaseModel):
 
     title: str
     options: list[str]
+    option_descriptions: list[str] = Field(
+        description="選択肢ごとの補足説明（options と同数。説明なしは空文字）"
+    )
     method: str
     ballot_count: int
     primary: RuleResultSchema
@@ -179,6 +201,7 @@ class VotingResultsSchema(BaseModel):
         return cls(
             title=dto.title,
             options=dto.options,
+            option_descriptions=list(dto.option_descriptions),
             method=dto.method,
             ballot_count=dto.ballot_count,
             primary=RuleResultSchema.from_domain(dto.primary),

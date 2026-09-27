@@ -20,6 +20,8 @@ class VotingSessionRecord:
     admin_token: str
     title: str
     options: list[str]
+    # 選択肢ごとの補足説明。options と同数で、説明のない選択肢は空文字。
+    option_descriptions: list[str]
     method: str
     deadline: datetime
     expires_at: datetime
