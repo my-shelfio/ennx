@@ -120,8 +120,6 @@ export function OptionListField({
                   variant="ghost"
                   size="sm"
                   className="self-start"
-                  aria-controls={descriptionId}
-                  aria-expanded={false}
                   onClick={() => handleOpenDescription(index)}
                 >
                   ＋ 補足説明を追加
