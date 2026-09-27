@@ -16,6 +16,9 @@ export { Dialog } from "./Dialog";
 export type { DialogProps } from "./Dialog";
 export { Drawer } from "./Drawer";
 export type { DrawerProps } from "./Drawer";
+export { DropdownMenu } from "./DropdownMenu";
+export { ReportBadgeList } from "./ReportBadgeList";
+export { reportBadgeStyle } from "./report-badge";
 export { Stepper } from "./Stepper";
 export type { StepperProps, StepperStep } from "./Stepper";
 export {

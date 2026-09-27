@@ -17,5 +17,6 @@ export type { PastedRankCell, PastedRankTable } from "./pastedTable";
 export { downloadFile } from "./download";
 export { loadAnalytics, trackPageView } from "./analytics";
 export { formatRemaining, REMAINING_REFRESH_MS } from "./formatRemaining";
+export { formatTimestamp } from "./formatTimestamp";
 export type { RemainingTime } from "./formatRemaining";
 export { useNow } from "./useNow";
