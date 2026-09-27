@@ -10,7 +10,7 @@ export interface CapacitiesFieldsProps {
   errors: Record<number, string>;
   /** 社員数が定員合計を超えている場合の警告（続行可能）。 */
   showSumWarning: boolean;
-  /** サーバー検証（10b）由来のエラー（`capacities` フィールド）。 */
+  /** サーバー側の入力検証で返ったエラー（`capacities` フィールド）。 */
   apiErrors?: readonly string[];
 }
 

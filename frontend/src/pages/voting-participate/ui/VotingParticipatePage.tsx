@@ -86,7 +86,7 @@ export function VotingParticipatePage() {
   }
 
   if (sessionQuery.isError) {
-    // 例外フロー1a: 存在有無を区別しない文言(無効・期限切れ・削除済み・不正トークンを区別しない)。
+    // 存在有無を区別しない文言(無効・期限切れ・削除済み・不正トークンを区別しない)。
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6">
         <Card>
@@ -207,7 +207,7 @@ export function VotingParticipatePage() {
           setIsSubmitted(true);
         },
         onError: (error) => {
-          // 例外フロー4a: 締切後に送信した場合を含め、エラーメッセージを表示する
+          // 締切後に送信した場合を含め、エラーメッセージを表示する
           // (ApiError.message は ProblemDetail の detail/title を反映済み)。
           toast({
             title: "投票の送信に失敗しました",

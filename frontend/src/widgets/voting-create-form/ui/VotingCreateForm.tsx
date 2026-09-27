@@ -97,7 +97,7 @@ export function VotingCreateForm({ onCreated, initialValues }: VotingCreateFormP
           onCreated(created);
         },
         onError: (error) => {
-          // 例外フロー4a: エラーメッセージ表示・入力内容は保持(再試行可能)。
+          // エラーメッセージを表示し、入力内容は保持する(再試行可能)。
           toast({
             title: "投票の作成に失敗しました",
             description: error.message,
