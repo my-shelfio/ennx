@@ -8,7 +8,7 @@ import {
   useParticipantSession,
   usePublicVotingResults,
 } from "../../../features/voting-participate";
-import { cn, formatRemaining, useNow } from "../../../shared/lib";
+import { cn, formatRemaining, REMAINING_REFRESH_MS, useNow } from "../../../shared/lib";
 import {
   Badge,
   Card,
@@ -22,8 +22,6 @@ import { VotingBallotForm } from "../../../widgets/voting-ballot-form";
 import { VotingResultsPanel } from "../../../widgets/voting-results-panel";
 
 const REFERENCE_NOTICE = "結果は合意形成のための参考情報であり、決議ではありません。";
-/** 残り時間表示の更新間隔。 */
-const REMAINING_REFRESH_MS = 60 * 1000;
 /** 締切到達後、サーバー側で締切済みになるのを待ってから再取得するまでの猶予。 */
 const DEADLINE_REFETCH_DELAY_MS = 1000;
 
@@ -147,7 +145,9 @@ export function VotingParticipatePage() {
 
   if (session.is_closed) {
     // 締切時刻より前に主催者が締め切った場合は、予定の締切日時とあわせてその旨を示す。
-    const closedEarly = new Date(session.deadline).getTime() > now.getTime();
+    // 判定には「締切済み」の応答を受け取った時刻を使う(残り時間表示用の現在時刻は
+    // 1分ごとにしか更新されず、ページを開いたまま締切を迎えると締切前の値が残るため)。
+    const closedEarly = new Date(session.deadline).getTime() > sessionQuery.dataUpdatedAt;
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 sm:px-6">
         <Card>

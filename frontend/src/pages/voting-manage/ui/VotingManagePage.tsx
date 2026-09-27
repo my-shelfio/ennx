@@ -12,7 +12,7 @@ import {
   useVotingResults,
 } from "../../../features/voting-manage";
 import { buildVotingParticipateUrl, ROUTES } from "../../../shared/config";
-import { cn, formatRemaining, useNow } from "../../../shared/lib";
+import { cn, formatRemaining, REMAINING_REFRESH_MS, useNow } from "../../../shared/lib";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, useToast } from "../../../shared/ui";
 import { VotingResultsPanel } from "../../../widgets/voting-results-panel";
 
@@ -37,7 +37,7 @@ export function VotingManagePage() {
   const resultsQuery = useVotingResults(adminToken, sessionQuery.data?.is_closed === true);
   const isOpen = sessionQuery.data !== undefined && !sessionQuery.data.is_closed;
   // 受付中は締切までの残り時間を1分ごとに更新し、締切を過ぎたら再取得して集計へ進める。
-  const now = useNow(60 * 1000, isOpen);
+  const now = useNow(REMAINING_REFRESH_MS, isOpen);
   const remaining =
     sessionQuery.data !== undefined
       ? formatRemaining(new Date(sessionQuery.data.deadline), now)

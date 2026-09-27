@@ -1,8 +1,10 @@
 const MINUTE_MS = 60 * 1000;
 const HOUR_MINUTES = 60;
 const DAY_MINUTES = 24 * HOUR_MINUTES;
+/** 残り時間表示を更新する間隔(表示の最小単位である1分)。 */
+export const REMAINING_REFRESH_MS = MINUTE_MS;
 /** 締切間近として強調表示する残り時間の閾値(24時間)。 */
-export const URGENT_THRESHOLD_MS = DAY_MINUTES * MINUTE_MS;
+const URGENT_THRESHOLD_MS = DAY_MINUTES * MINUTE_MS;
 
 export interface RemainingTime {
   /** 表示文字列(例: 「あと2日5時間」「あと3時間10分」「締切まで30分」「締切を過ぎました」)。 */
