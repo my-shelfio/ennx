@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import { PrintReportButton, PrintReportHeader } from "../../../features/print-report";
@@ -9,6 +9,7 @@ import {
   useVotingResults,
 } from "../../../features/voting-manage";
 import { buildVotingParticipateUrl } from "../../../shared/config";
+import { cn, formatRemaining, useNow } from "../../../shared/lib";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, useToast } from "../../../shared/ui";
 import { VotingResultsPanel } from "../../../widgets/voting-results-panel";
 
@@ -29,6 +30,21 @@ export function VotingManagePage() {
   const closeMutation = useCloseVotingSession(adminToken);
   const deleteMutation = useDeleteVotingSession(adminToken);
   const resultsQuery = useVotingResults(adminToken, sessionQuery.data?.is_closed === true);
+  const isOpen = sessionQuery.data !== undefined && !sessionQuery.data.is_closed;
+  // 受付中は締切までの残り時間を1分ごとに更新し、締切を過ぎたら再取得して集計へ進める。
+  const now = useNow(60 * 1000, isOpen);
+  const remaining =
+    sessionQuery.data !== undefined
+      ? formatRemaining(new Date(sessionQuery.data.deadline), now)
+      : null;
+  const isOverWhileOpen = isOpen && remaining?.isOver === true;
+  const { refetch: refetchSession } = sessionQuery;
+
+  useEffect(() => {
+    if (isOverWhileOpen) {
+      void refetchSession();
+    }
+  }, [isOverWhileOpen, refetchSession]);
 
   if (isDeleted) {
     return (
@@ -112,8 +128,13 @@ export function VotingManagePage() {
       <div className="print:hidden">
         <h1 className="text-2xl font-bold text-slate-900">{session.title}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          締切: {new Date(session.deadline).toLocaleString("ja-JP")} ／ 投票数:{" "}
-          {session.ballot_count}件
+          締切: {new Date(session.deadline).toLocaleString("ja-JP")}
+          {!session.is_closed && remaining !== null ? (
+            <span className={cn("ml-1", remaining.isUrgent && "font-medium text-warning-700")}>
+              ({remaining.text})
+            </span>
+          ) : null}{" "}
+          ／ 投票数: {session.ballot_count}件
         </p>
       </div>
 
