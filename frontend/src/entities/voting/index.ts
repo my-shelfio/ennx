@@ -7,7 +7,6 @@ export type {
   VotingReportItem,
   VotingResults,
   VotingSessionCreated,
-  VotingMethodInfo,
   VotingSessionCreateRequest,
 } from "./model/types";
 export { RULE_LABELS, VOTING_METHOD_INFO } from "./model/types";

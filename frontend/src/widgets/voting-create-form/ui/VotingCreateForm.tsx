@@ -137,7 +137,7 @@ export function VotingCreateForm({ onCreated }: VotingCreateFormProps) {
 
           <fieldset className="min-w-0">
             <legend className="block text-sm font-medium text-slate-700">
-              どう決めたいですか？(任意)
+              どう決めたいですか？（任意）
             </legend>
             <p className="mt-1 text-xs text-slate-500">
               選ぶと、向いている投票方式が選択されます。方式は下で自由に変更できます。
