@@ -35,6 +35,7 @@ function isStringArray(value: unknown): value is string[] {
 /**
  * ルーター state(外部から任意の値が入りうる)から複製元のフォーム値を取り出す。
  * 形が合わない場合(直接アクセス・履歴の state 破損など)は null を返し、空のフォームで始める。
+ * 締切は state の値によらず既定値(最長の日数)に戻す。
  */
 export function readDuplicateFormValues(state: unknown): VotingCreateFormValues | null {
   if (typeof state !== "object" || state === null || !("duplicate" in state)) {
@@ -45,17 +46,23 @@ export function readDuplicateFormValues(state: unknown): VotingCreateFormValues 
     return null;
   }
   const values: Record<string, unknown> = { ...duplicate };
-  const { title, options, optionDescriptions, method, deadlineDays, publishResults } = values;
+  const { title, options, optionDescriptions, method, publishResults } = values;
   if (
     typeof title !== "string" ||
     !isStringArray(options) ||
     !isStringArray(optionDescriptions) ||
     optionDescriptions.length !== options.length ||
-    typeof deadlineDays !== "number" ||
     typeof publishResults !== "boolean"
   ) {
     return null;
   }
   const knownMethod = VOTING_METHODS.find((candidate) => candidate === method) ?? "";
-  return { title, options, optionDescriptions, method: knownMethod, deadlineDays, publishResults };
+  return {
+    title,
+    options,
+    optionDescriptions,
+    method: knownMethod,
+    deadlineDays: MAX_DEADLINE_DAYS,
+    publishResults,
+  };
 }

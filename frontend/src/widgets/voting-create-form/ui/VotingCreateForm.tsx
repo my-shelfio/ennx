@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import {
   buildDeadlineIso,
   buildOptionDescriptions,
+  MAX_DEADLINE_DAYS,
   validateVotingCreateForm,
   VOTING_METHOD_INFO,
   VOTING_METHODS,
@@ -35,7 +36,7 @@ const INITIAL_VALUES: VotingCreateFormValues = {
   options: ["", ""],
   optionDescriptions: ["", ""],
   method: "",
-  deadlineDays: 7,
+  deadlineDays: MAX_DEADLINE_DAYS,
   publishResults: false,
 };
 

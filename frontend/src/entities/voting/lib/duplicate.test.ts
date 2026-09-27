@@ -52,6 +52,11 @@ describe("readDuplicateFormValues", () => {
     expect(readDuplicateFormValues({ duplicate })).toEqual(duplicate);
   });
 
+  it("state の締切日数は使わず既定値に戻す", () => {
+    const duplicate = { ...buildDuplicateFormValues(session), deadlineDays: 99 };
+    expect(readDuplicateFormValues({ duplicate })?.deadlineDays).toBe(MAX_DEADLINE_DAYS);
+  });
+
   it.each([
     ["state なし", null],
     ["duplicate なし", { other: 1 }],
