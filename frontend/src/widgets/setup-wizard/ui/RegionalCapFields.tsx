@@ -18,7 +18,7 @@ export interface RegionalCapFieldsProps {
   onChangeRegionalCap: (index: number, value: number | null) => void;
   regionalCapErrors: Record<number, string>;
   regionalCapacitySumError?: string | undefined;
-  /** サーバー検証（10b）由来のエラー（max_caps / regions / regional_caps フィールド）。 */
+  /** サーバー側の入力検証で返ったエラー（max_caps / regions / regional_caps フィールド）。 */
   apiErrors?: readonly string[];
 }
 

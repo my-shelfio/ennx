@@ -9,7 +9,7 @@ export interface GeneralConstraintFieldsProps {
   constraints: readonly ConstraintEntry[];
   onChangeConstraints: (next: readonly ConstraintEntry[]) => void;
   employeeNames: readonly string[];
-  /** サーバー検証（10b）由来のエラー（`constraints` フィールド）。 */
+  /** サーバー側の入力検証で返ったエラー（`constraints` フィールド）。 */
   apiErrors?: readonly string[];
 }
 

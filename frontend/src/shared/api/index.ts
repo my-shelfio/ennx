@@ -1,5 +1,4 @@
 export { apiClient, unwrap, unwrapVoid } from "./client";
-export { queryClient } from "./query-client";
 export {
   ApiError,
   UnknownApiError,

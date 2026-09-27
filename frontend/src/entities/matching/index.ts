@@ -40,7 +40,6 @@ export {
   randomizeMatrix,
   randomRow,
   rowFromOrderedColumns,
-  updateCell,
   updateRow,
   validateRow,
 } from "./lib/preferenceMatrix";

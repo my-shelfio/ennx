@@ -3,8 +3,6 @@ export {
   AnimatePresence,
   AppMotionConfig,
   motion,
-  Reorder,
-  useDragControls,
   useReducedMotion,
 } from "./motion";
 export { escapeCsvField, parseCsv, stripBom, toCsvRow, UTF8_BOM } from "./csv";
@@ -19,5 +17,6 @@ export type { PastedRankCell, PastedRankTable } from "./pastedTable";
 export { downloadFile } from "./download";
 export { loadAnalytics, trackPageView } from "./analytics";
 export { formatRemaining, REMAINING_REFRESH_MS } from "./formatRemaining";
+export { formatTimestamp } from "./formatTimestamp";
 export type { RemainingTime } from "./formatRemaining";
 export { useNow } from "./useNow";

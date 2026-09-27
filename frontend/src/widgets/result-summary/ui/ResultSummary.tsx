@@ -1,6 +1,15 @@
 import type { MatchingResult } from "../../../entities/matching";
 import { normalizeBlockingPairs } from "../../../entities/matching";
-import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../shared/ui";
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  ReportBadgeList,
+  reportBadgeStyle,
+} from "../../../shared/ui";
 import { computeSummaryMetrics, findStabilityReportItem } from "../lib/metrics";
 
 export interface ResultSummaryProps {
@@ -24,12 +33,6 @@ const DISTRIBUTION_BUTTON_CLASS =
 function formatPercent(rate: number): string {
   return `${Math.round(rate * 100)}%`;
 }
-
-const REPORT_BADGE: Record<string, { symbol: string; variant: "ok" | "danger" | "neutral" }> = {
-  ok: { symbol: "✓", variant: "ok" },
-  ng: { symbol: "✗", variant: "danger" },
-  info: { symbol: "―", variant: "neutral" },
-};
 
 /**
  * 結果画面のサマリーカード + 性質レポートバッジ。
@@ -95,8 +98,8 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
               {stabilityItem === undefined ? (
                 "―"
               ) : (
-                <Badge variant={REPORT_BADGE[stabilityItem.status]?.variant ?? "neutral"}>
-                  {REPORT_BADGE[stabilityItem.status]?.symbol ?? "―"}{" "}
+                <Badge variant={reportBadgeStyle(stabilityItem.status).variant}>
+                  {reportBadgeStyle(stabilityItem.status).symbol}{" "}
                   {stabilityItem.status === "ok" ? "満たしている" : "違反あり"}
                 </Badge>
               )}
@@ -164,27 +167,10 @@ export function ResultSummary({ result, proposerPrefs, onSelectDistribution }: R
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ul className="flex flex-wrap gap-3">
-            {result.report.map((item, index) => {
-              const badge = REPORT_BADGE[item.status] ?? REPORT_BADGE.info;
-              return (
-                <li key={index} className="group relative">
-                  <Badge variant={badge?.variant} tabIndex={0}>
-                    {badge?.symbol} {item.label}
-                  </Badge>
-                  <div
-                    role="tooltip"
-                    className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max max-w-xs -translate-x-1/2 rounded-control bg-slate-900 px-3 py-2 text-xs text-white opacity-0 shadow-popover transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                  >
-                    <p>{item.detail}</p>
-                    <p className="mt-1 border-t border-slate-700 pt-1 text-slate-300">
-                      入力データに対してアルゴリズムが保証する性質です。入力データ自体の正確性・網羅性は保証しません。
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <ReportBadgeList
+            items={result.report}
+            tooltipNote="入力データに対してアルゴリズムが保証する性質です。入力データ自体の正確性・網羅性は保証しません。"
+          />
         </CardContent>
       </Card>
 

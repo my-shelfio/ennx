@@ -10,7 +10,7 @@ import { apiClient, unwrap } from "../../../shared/api";
  * 失敗時（コールドスタート・ネットワークエラー・422 バリデーションエラー）は呼び出し側
  * （pages/preferences）でエラートーストを表示する。入力（useMatchingInputStore）は
  * このフックでは変更しないため、失敗しても選好入力画面に留まり再試行できる
- * （例外フロー 10a、入力内容は失われない）。
+ * （入力内容は失われない）。
  */
 export function useRunMatching(): UseMutationResult<MatchingResult, Error, MatchingInput> {
   return useMutation({

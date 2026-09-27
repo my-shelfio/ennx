@@ -50,7 +50,7 @@ export function SetupWizard({ isSample = false }: SetupWizardProps) {
   const { toast } = useToast();
   const validateMutation = useValidateInput();
 
-  // 前回の入力途中データが残っている場合、再開/破棄の選択を先に表示する（代替フロー 1b）。
+  // 前回の入力途中データが残っている場合、再開/破棄の選択を先に表示する。
   const [needsResumeDecision] = useState(() => !isSample && !isEmptyMatchingInput(input));
   const [resumeDecided, setResumeDecided] = useState(!needsResumeDecision);
 

@@ -23,7 +23,7 @@ export interface DetailStepProps {
   onChangeCapacity: (index: number, value: number | null) => void;
   capacityErrors: Record<number, string>;
   showCapacitySumWarning: boolean;
-  /** サーバー検証（10b）由来のエラー（`capacities` フィールド）。 */
+  /** サーバー側の入力検証で返ったエラー（`capacities` フィールド）。 */
   capacitiesApiErrors: readonly string[];
 
   maxCaps: readonly (number | null)[];
@@ -38,16 +38,16 @@ export interface DetailStepProps {
   onChangeRegionalCap: (index: number, value: number | null) => void;
   regionalCapErrors: Record<number, string>;
   regionalCapacitySumError?: string | undefined;
-  /** サーバー検証（10b）由来のエラー（max_caps / regions / regional_caps フィールド）。 */
+  /** サーバー側の入力検証で返ったエラー（max_caps / regions / regional_caps フィールド）。 */
   regionalCapApiErrors: readonly string[];
 
   constraints: readonly ConstraintEntry[];
   onChangeConstraints: (next: readonly ConstraintEntry[]) => void;
   employeeNames: readonly string[];
-  /** サーバー検証（10b）由来のエラー（`constraints` フィールド）。 */
+  /** サーバー側の入力検証で返ったエラー（`constraints` フィールド）。 */
   constraintsApiErrors: readonly string[];
 
-  /** サーバー検証（10b）から返ったフィールド未特定のエラー、または実行不可のエラー。 */
+  /** サーバー側の入力検証で返ったフィールド未特定のエラー、または実行不可のエラー。 */
   generalErrors: readonly string[];
   isSubmitting: boolean;
   onBack: () => void;

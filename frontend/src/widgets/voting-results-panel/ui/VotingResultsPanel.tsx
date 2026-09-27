@@ -10,6 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ReportBadgeList,
   Table,
   TableBody,
   TableCell,
@@ -25,12 +26,6 @@ export interface VotingResultsPanelProps {
    */
   results: VotingResults | PublicVotingResults;
 }
-
-const REPORT_BADGE: Record<string, { symbol: string; variant: "ok" | "danger" | "neutral" }> = {
-  ok: { symbol: "✓", variant: "ok" },
-  ng: { symbol: "✗", variant: "danger" },
-  info: { symbol: "―", variant: "neutral" },
-};
 
 function winnerLabels(rule: RuleResult, options: string[]): string {
   return rule.winners.map((index) => options[index] ?? "").join("、");
@@ -146,24 +141,7 @@ export function VotingResultsPanel({ results }: VotingResultsPanelProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ul className="flex flex-wrap gap-3">
-            {results.report.map((item, index) => {
-              const badge = REPORT_BADGE[item.status] ?? REPORT_BADGE.info;
-              return (
-                <li key={index} className="group relative">
-                  <Badge variant={badge?.variant} tabIndex={0}>
-                    {badge?.symbol} {item.label}
-                  </Badge>
-                  <div
-                    role="tooltip"
-                    className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max max-w-xs -translate-x-1/2 rounded-control bg-slate-900 px-3 py-2 text-xs text-white opacity-0 shadow-popover transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-                  >
-                    <p>{item.detail}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <ReportBadgeList items={results.report} />
         </CardContent>
       </Card>
     </div>

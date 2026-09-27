@@ -1,7 +1,11 @@
 import { useState } from "react";
 
 import type { MatchingResult } from "../../../entities/matching";
-import { normalizeBlockingPairs } from "../../../entities/matching";
+import {
+  buildDepartmentAssignments,
+  normalizeBlockingPairs,
+  rankOfDepartmentForEmployee,
+} from "../../../entities/matching";
 import {
   Button,
   Card,
@@ -11,7 +15,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../shared/ui";
-import { buildDepartmentAssignments, rankOfDepartmentForEmployee } from "../lib/assignment";
 
 import { DepartmentDetail } from "./DepartmentDetail";
 
