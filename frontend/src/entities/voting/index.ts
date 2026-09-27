@@ -35,3 +35,5 @@ export type {
   VotingCreateFormErrors,
   VotingCreateFormValues,
 } from "./lib/validation";
+export { buildDuplicateFormValues, readDuplicateFormValues } from "./lib/duplicate";
+export type { VotingDuplicateState } from "./lib/duplicate";
