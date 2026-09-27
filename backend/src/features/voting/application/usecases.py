@@ -387,9 +387,8 @@ class GetVotingResults:
         if not _is_closed(record, now):
             raise VotingNotClosedError("結果は締切後に確認できます")
         ballots = self._repository.list_ballots(record.session_id)
-        return VotingResults.from_public(
-            _build_public_results(record, ballots), voters=[b.voter_name for b in ballots]
-        )
+        public = _build_public_results(record, ballots)
+        return VotingResults(**vars(public), voters=[b.voter_name for b in ballots])
 
 
 class GetPublicVotingResults:

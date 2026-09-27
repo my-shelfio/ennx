@@ -23,14 +23,7 @@ from features.matching.domain import checks
 from features.matching.domain.ca import all_constraints, capacity_constraint, cutoff_adjustment
 from features.matching.domain.da import deferred_acceptance
 from features.matching.domain.fda import flexible_deferred_acceptance
-from features.matching.domain.models import (
-    BaseMatchingInput,
-    CAInput,
-    Constraint,
-    DAInput,
-    FDAInput,
-    MatchingResult,
-)
+from features.matching.domain.models import CAInput, Constraint, DAInput, FDAInput, MatchingResult
 from shared.application.errors import FieldError
 from shared.domain.report import ReportItem
 
@@ -45,13 +38,9 @@ def resolve_names(request: MatchingRequest) -> tuple[list[str], list[str]]:
     return emp_names, dep_names
 
 
-def display_names(data: BaseMatchingInput) -> tuple[list[str], list[str]]:
-    """組み立て済みの入力モデルから社員・部署の表示名を取り出す。
-
-    `build_domain_input` が必ず表示名を設定するため、名前の再計算は不要。
-    """
-    assert data.proposer_names is not None
-    assert data.receiver_names is not None
+def display_names(data: DAInput | FDAInput | CAInput) -> tuple[list[str], list[str]]:
+    """`build_domain_input` が設定した社員・部署の表示名を取り出す。"""
+    assert data.proposer_names is not None and data.receiver_names is not None
     return data.proposer_names, data.receiver_names
 
 

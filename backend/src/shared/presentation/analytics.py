@@ -1,9 +1,4 @@
-"""アクセス解析設定の API（GA4 測定 ID の配信）。
-
-どの feature にも属さない設定配信のため shared に置く。バージョン非依存
-（prefix は /meta のみ）で、API バージョンの prefix は backend/src/api/vN/router.py が
-include 時に付与する。
-"""
+"""アクセス解析設定の API（どの feature にも属さない設定配信のため shared に置く）。"""
 
 from __future__ import annotations
 

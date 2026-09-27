@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from datetime import datetime
 
 from features.voting.domain import RuleResult
@@ -123,8 +123,3 @@ class VotingResults(PublicVotingResults):
     # 投票済みニックネームの一覧（投票順）。集計結果画面でも
     # 「誰が投票したか」を表示できるようにする。
     voters: list[str]
-
-    @classmethod
-    def from_public(cls, public: PublicVotingResults, voters: list[str]) -> VotingResults:
-        """公開用の集計結果に投票者一覧を加えて組み立てる。"""
-        return cls(**{f.name: getattr(public, f.name) for f in fields(public)}, voters=voters)

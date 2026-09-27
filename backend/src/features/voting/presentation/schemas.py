@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,7 +18,6 @@ from features.voting.application.dto import (
     VotingResults,
     VotingSessionCreated,
 )
-from features.voting.domain import RuleResult
 from shared.presentation.schemas import ReportItemSchema
 
 
@@ -186,16 +184,6 @@ class RuleResultSchema(BaseModel):
     ranking: list[int] = Field(description="スコア降順の選択肢番号列")
     winners: list[int] = Field(description="最高スコアの選択肢番号（同点含む）")
 
-    @classmethod
-    def from_domain(cls, result: RuleResult) -> RuleResultSchema:
-        """ドメインの RuleResult から組み立てる。"""
-        return cls(
-            rule=result.rule,
-            scores=result.scores,
-            ranking=result.ranking,
-            winners=result.winners,
-        )
-
 
 class _PublicResultsFields(BaseModel):
     """公開用・主催者用の集計結果スキーマに共通するフィールド。"""
@@ -218,7 +206,7 @@ class PublicVotingResultsSchema(_PublicResultsFields):
     @classmethod
     def from_dto(cls, dto: PublicVotingResults) -> PublicVotingResultsSchema:
         """application 層の DTO から組み立てる。"""
-        return cls(**_public_fields(dto))
+        return cls.model_validate(dto, from_attributes=True)
 
 
 class VotingResultsSchema(_PublicResultsFields):
@@ -229,21 +217,7 @@ class VotingResultsSchema(_PublicResultsFields):
     @classmethod
     def from_dto(cls, dto: VotingResults) -> VotingResultsSchema:
         """application 層の DTO から組み立てる。"""
-        return cls(**_public_fields(dto), voters=list(dto.voters))
-
-
-def _public_fields(dto: PublicVotingResults) -> dict[str, Any]:
-    """公開用・主催者用の集計結果スキーマに共通するフィールドを組み立てる。"""
-    return {
-        "title": dto.title,
-        "options": dto.options,
-        "option_descriptions": list(dto.option_descriptions),
-        "method": dto.method,
-        "ballot_count": dto.ballot_count,
-        "primary": RuleResultSchema.from_domain(dto.primary),
-        "comparison": [RuleResultSchema.from_domain(r) for r in dto.comparison],
-        "report": [ReportItemSchema.from_domain(item) for item in dto.report],
-    }
+        return cls.model_validate(dto, from_attributes=True)
 
 
 class CleanupResponseSchema(BaseModel):
