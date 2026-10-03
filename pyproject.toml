@@ -74,7 +74,7 @@ exclude = ['^\.venv/', '^build/', '^参考資料/']
 
 # --- 層依存契約（import-linter） ---
 # feature 単位 + Clean Architecture 構成。
-# ①feature 間は互いに独立（matching ⇔ voting の相互 import 禁止）
+# ①feature 間は互いに独立（assignment ⇔ matching ⇔ result_share ⇔ voting の相互 import 禁止）
 # ②各 feature 内部は presentation / infrastructure → application → domain の一方向
 # ③shared は features に依存しない（features → shared の一方向のみ）
 # ④api は最外殻（バージョニング集約層）。features / shared → api は禁止する
@@ -88,11 +88,12 @@ root_packages = ["api", "features", "shared"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
-name = "features は互いに独立している（assignment ⇔ matching ⇔ voting）"
+name = "features は互いに独立している（assignment ⇔ matching ⇔ result_share ⇔ voting）"
 type = "independence"
 modules = [
     "features.assignment",
     "features.matching",
+    "features.result_share",
     "features.voting",
 ]
 
@@ -107,6 +108,7 @@ layers = [
 containers = [
     "features.assignment",
     "features.matching",
+    "features.result_share",
     "features.voting",
 ]
 
@@ -116,6 +118,7 @@ type = "forbidden"
 source_modules = [
     "features.assignment.application",
     "features.matching.application",
+    "features.result_share.application",
     "features.voting.application",
     "shared.application",
 ]
@@ -149,6 +152,9 @@ forbidden_modules = [
     "features.matching.domain",
     "features.matching.application",
     "features.matching.infrastructure",
+    "features.result_share.domain",
+    "features.result_share.application",
+    "features.result_share.infrastructure",
     "features.voting.domain",
     "features.voting.application",
     "features.voting.infrastructure",

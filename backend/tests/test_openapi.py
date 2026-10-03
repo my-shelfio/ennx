@@ -28,6 +28,10 @@ EXPECTED_PATHS = (
     "/api/v1/voting/a/{admin_token}/close",
     "/api/v1/voting/a/{admin_token}/results",
     "/api/v1/voting/cleanup",
+    "/api/v1/result-share/snapshots",
+    "/api/v1/result-share/v/{view_token}",
+    "/api/v1/result-share/d/{delete_token}",
+    "/api/v1/result-share/cleanup",
 )
 
 
