@@ -8,11 +8,13 @@ import {
 } from "./retention";
 
 const NOW = new Date(2026, 9, 3, 10, 0, 0);
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 describe("estimateExpiresAt", () => {
-  it("現在時刻から保持日数後の日時を返す", () => {
-    expect(estimateExpiresAt(NOW, 7)).toEqual(new Date(2026, 9, 10, 10, 0, 0));
-    expect(estimateExpiresAt(NOW, 30)).toEqual(new Date(2026, 10, 2, 10, 0, 0));
+  it("現在時刻から保持日数 × 24 時間後の日時を返す（サーバーの期限計算と同じ）", () => {
+    // 夏時間の切り替えを挟むタイムゾーンでも成り立つよう、期待値は経過時間で表す。
+    expect(estimateExpiresAt(NOW, 7)).toEqual(new Date(NOW.getTime() + 7 * DAY_MS));
+    expect(estimateExpiresAt(NOW, 30)).toEqual(new Date(NOW.getTime() + 30 * DAY_MS));
   });
 });
 
