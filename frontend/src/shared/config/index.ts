@@ -1,4 +1,5 @@
 export {
+  buildSharedResultUrl,
   buildVotingManageUrl,
   buildVotingParticipateUrl,
   LEGACY_ROUTES,

@@ -21,6 +21,8 @@ from fastapi import FastAPI
 from api.v1.router import router as api_v1_router
 from features.assignment.presentation.errors import register_assignment_error_handlers
 from features.matching.presentation.errors import register_matching_error_handlers
+from features.result_share.presentation.errors import register_result_share_error_handlers
+from features.result_share.presentation.router import get_result_share_repository
 from features.voting.presentation.errors import register_voting_error_handlers
 from features.voting.presentation.router import get_voting_repository
 from shared.presentation.errors import register_request_validation_handler
@@ -41,10 +43,12 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(api_v1_router)
     _wire_voting_repository(app)
+    _wire_result_share_repository(app)
     register_request_validation_handler(app)
     register_assignment_error_handlers(app)
     register_matching_error_handlers(app)
     register_voting_error_handlers(app)
+    register_result_share_error_handlers(app)
 
     # SPA はルータ登録より後にマウントする（/api・/healthz を API に優先させる）。
     spa_dist = os.environ.get(_SPA_DIST_ENV)
@@ -72,3 +76,25 @@ def _wire_voting_repository(app: FastAPI) -> None:
     init_voting_schema(engine)
     repository = SqlVotingRepository(engine)
     app.dependency_overrides[get_voting_repository] = lambda: repository
+
+
+def _wire_result_share_repository(app: FastAPI) -> None:
+    """結果共有リポジトリの DI 配線（合成ルート）。
+
+    `DATABASE_URL` 設定時のみ infrastructure 実装（Neon PostgreSQL）を
+    注入する。未設定時は依存を上書きせず、結果共有 API は 503 を返す
+    （OpenAPI にはエンドポイントを常に含める）。マッチングの実行・検証 API は
+    本配線の有無に関わらずステートレスのまま動作する。
+    """
+    from features.result_share.infrastructure import (
+        SqlResultShareRepository,
+        create_result_share_engine_from_env,
+        init_result_share_schema,
+    )
+
+    engine = create_result_share_engine_from_env()
+    if engine is None:
+        return
+    init_result_share_schema(engine)
+    repository = SqlResultShareRepository(engine)
+    app.dependency_overrides[get_result_share_repository] = lambda: repository

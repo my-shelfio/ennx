@@ -15,6 +15,7 @@ export const ROUTES = {
     setup: "/matching/setup",
     preferences: "/matching/preferences",
     result: "/matching/result",
+    sharedResult: "/matching/shared/:token",
   },
   assignment: {
     intro: "/assignment",
@@ -39,6 +40,14 @@ export function buildVotingParticipateUrl(token: string): string {
 /** 投票の管理用 URL を組み立てる（`ROUTES.voting.manage` の `:token` を実値に置換）。 */
 export function buildVotingManageUrl(token: string): string {
   return `/voting/m/${token}`;
+}
+
+/**
+ * マッチング結果の閲覧用 URL を組み立てる（`ROUTES.matching.sharedResult` の `:token` を実値に置換）。
+ * 発行者への表示・コピー用に使う（`window.location.origin` は呼び出し側で付与する）。
+ */
+export function buildSharedResultUrl(token: string): string {
+  return `/matching/shared/${token}`;
 }
 
 /**

@@ -6,6 +6,7 @@ import { HomePage } from "../pages/home";
 import { MatchingIntroPage } from "../pages/matching-intro";
 import { PreferencesPage } from "../pages/preferences";
 import { ResultPage } from "../pages/result";
+import { ResultViewPage } from "../pages/result-view";
 import { SetupWizardPage } from "../pages/setup";
 import { VotingCreatePage } from "../pages/voting-create";
 import { VotingIntroPage } from "../pages/voting-intro";
@@ -31,7 +32,8 @@ function LegacyRedirect({ to }: { to: string }) {
  *
  * 各モジュールは名前空間直下を導入ページ（何を解決するか・どう使うかの説明）とし、
  * 実行画面は下位パスに置く。"/matching" は配属マッチングの導入、"/matching/setup" は
- * 設定ウィザード、"/matching/preferences" は選好行列エディタ、"/matching/result" は結果画面。
+ * 設定ウィザード、"/matching/preferences" は選好行列エディタ、"/matching/result" は結果画面、
+ * "/matching/shared/:token" は閲覧用 URL で共有された結果の閲覧専用画面。
  * "/assignment" は割り当ての導入、"/assignment/run" は実行画面。
  * "/voting" は投票・合意形成の導入、"/voting/create" は作成、"/voting/v/:token" は参加、
  * "/voting/m/:token" は管理（結果確認・削除）。
@@ -52,6 +54,7 @@ export function App() {
             <Route path={ROUTES.matching.setup} element={<SetupWizardPage />} />
             <Route path={ROUTES.matching.preferences} element={<PreferencesPage />} />
             <Route path={ROUTES.matching.result} element={<ResultPage />} />
+            <Route path={ROUTES.matching.sharedResult} element={<ResultViewPage />} />
             <Route path={ROUTES.assignment.intro} element={<AssignmentIntroPage />} />
             <Route path={ROUTES.assignment.run} element={<AssignmentPage />} />
             <Route path={ROUTES.voting.intro} element={<VotingIntroPage />} />
