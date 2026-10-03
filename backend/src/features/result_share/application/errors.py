@@ -1,6 +1,6 @@
 """結果共有ユースケースのエラー。
 
-presentation 層が HTTP ステータスへマッピングする（404 / 413 / 422 / 503）。
+presentation 層が HTTP ステータスへマッピングする（404 / 410 / 413 / 422 / 503）。
 """
 
 from __future__ import annotations
@@ -20,6 +20,13 @@ class ResultShareNotFoundError(ResultShareError):
     """トークンに対応する共有データが存在しない・期限切れ（→ 404）。
 
     存在有無を区別しない文言でトークン探索を防ぐ。
+    """
+
+
+class SharedResultIncompatibleError(ResultShareError):
+    """保存済みの入力が現在の入力形式に合わず表示できない（→ 410）。
+
+    発行後（保持期間中）に入力形式が変わった場合に起こる。
     """
 
 

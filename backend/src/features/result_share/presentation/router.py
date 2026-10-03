@@ -54,6 +54,7 @@ RepositoryDep = Annotated[ResultShareRepository, Depends(get_result_share_reposi
 
 _ERROR_RESPONSES: dict[int | str, dict[str, object]] = {
     status.HTTP_404_NOT_FOUND: {"model": ProblemDetail},
+    status.HTTP_410_GONE: {"model": ProblemDetail},
     status.HTTP_413_CONTENT_TOO_LARGE: {"model": ProblemDetail},
     status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ProblemDetail},
     status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ProblemDetail},

@@ -12,13 +12,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from features.result_share.application.dto import (
     CreateResultShareRequest,
     ResultShareCreated,
     SharedResultView,
 )
+from features.result_share.application.errors import SharedResultIncompatibleError
 from features.result_share.domain import (
     DEFAULT_RETENTION_DAYS,
     MAX_RETENTION_DAYS,
@@ -141,12 +142,18 @@ class SharedResultSchema(BaseModel):
 
     @classmethod
     def from_dto(cls, dto: SharedResultView) -> SharedResultSchema:
-        """application 層の DTO から組み立てる。"""
-        return cls(
-            input=SharedMatchingInputSchema.model_validate(dto.snapshot),
-            created_at=dto.created_at,
-            expires_at=dto.expires_at,
-        )
+        """application 層の DTO から組み立てる。
+
+        保存済みの入力は発行時に検証済みだが、保持期間中に入力形式が変わると
+        現在の形式に合わなくなるため、その場合は表示できない旨のエラーにする。
+        """
+        try:
+            shared_input = SharedMatchingInputSchema.model_validate(dto.snapshot)
+        except ValidationError as exc:
+            raise SharedResultIncompatibleError(
+                "この共有データは、発行後のアプリの更新により表示できなくなりました"
+            ) from exc
+        return cls(input=shared_input, created_at=dto.created_at, expires_at=dto.expires_at)
 
 
 class ResultShareCleanupResponseSchema(BaseModel):

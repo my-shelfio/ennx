@@ -10,6 +10,7 @@ from features.result_share.application.errors import (
     ResultShareNotFoundError,
     ResultShareTooLargeError,
     ResultShareUnavailableError,
+    SharedResultIncompatibleError,
 )
 from shared.presentation.errors import build_problem_response
 from shared.presentation.schemas import FieldErrorSchema
@@ -38,6 +39,18 @@ def register_result_share_error_handlers(app: FastAPI) -> None:
         return build_problem_response(
             status_code=status.HTTP_404_NOT_FOUND,
             title="見つかりません",
+            detail=str(exc),
+            errors=[],
+        )
+
+    @app.exception_handler(SharedResultIncompatibleError)
+    async def handle_shared_result_incompatible(
+        _request: Request, exc: SharedResultIncompatibleError
+    ) -> JSONResponse:
+        """現在の入力形式に合わない保存済みの入力を 410 に変換する。"""
+        return build_problem_response(
+            status_code=status.HTTP_410_GONE,
+            title="表示できません",
             detail=str(exc),
             errors=[],
         )

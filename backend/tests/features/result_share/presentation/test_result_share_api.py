@@ -155,6 +155,21 @@ def test_expired_share_returns_404(client: TestClient, engine: Engine) -> None:
     assert client.get(f"/api/v1/result-share/v/{created['view_token']}").status_code == 404
 
 
+def test_snapshot_incompatible_with_current_input_schema_returns_410(
+    client: TestClient, engine: Engine
+) -> None:
+    """保持期間中に入力形式が変わり保存済みの入力が合わなくなっても、500 ではなく
+    RFC 9457 形式の 410 を返す。"""
+    created = _create_share(client, _sample_input(client))
+    with engine.begin() as conn:
+        conn.execute(
+            sa.update(result_shares).values(snapshot={**_sample_input(client), "removed_field": 1})
+        )
+    response = client.get(f"/api/v1/result-share/v/{created['view_token']}")
+    assert response.status_code == 410
+    assert response.headers["content-type"].startswith("application/problem+json")
+
+
 def test_cleanup_deletes_expired_shares(
     client: TestClient, engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
