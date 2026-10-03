@@ -10,6 +10,7 @@ import {
 } from "../../../entities/matching";
 import { ExportMenu } from "../../../features/export-result";
 import { PrintReportButton, PrintReportHeader } from "../../../features/print-report";
+import { ResultShareButton } from "../../../features/result-share";
 import { useRunMatching } from "../../../features/run-matching";
 import { ShareLinkButton } from "../../../features/share-link";
 import { ROUTES } from "../../../shared/config";
@@ -33,7 +34,9 @@ const ALGORITHM_LABELS: Record<string, string> = {
  * 実行結果（`useMatchingResultStore`）は localStorage に永続化されないため、
  * ページ再読み込み等で失われている場合は選好入力画面へ戻す。
  * 「実行過程を見る」ボタンでステップ再生ビューア（widgets/step-player）を表示する。
- * 「共有リンクをコピー」ボタンは features/share-link の ShareLinkButton に委譲する。
+ * 「共有リンクをコピー」ボタン（入力を URL に埋め込む）は features/share-link の ShareLinkButton に、
+ * 「閲覧用 URL を発行」ボタン（入力を期限付きで保存し、閲覧専用の URL を発行する）は
+ * features/result-share の ResultShareButton に委譲する。
  * 「エクスポート」ボタンは features/export-result の ExportMenu に委譲する。
  *
  * 詳細テーブルで社員を選ぶと、その社員の「なぜこの配属か」説明パネル
@@ -148,6 +151,7 @@ export function ResultPage() {
             実行過程を見る
           </Button>
           <ShareLinkButton input={input} />
+          <ResultShareButton input={input} />
           <ExportMenu input={input} result={result} />
         </div>
       </div>
